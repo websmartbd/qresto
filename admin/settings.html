@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Settings · Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="assets/tw.js"></script>
+  <link rel="stylesheet" href="assets/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="../demo-data.js"></script>
+  <script src="../config.js"></script>
+</head>
+
+<body class="bg-neutral-100 text-ink text-[13px] font-sans">
+  <main id="main" class="p-3 pb-8 lg:p-6"></main>
+  <script src="assets/app.js"></script>
+  <script>
+    /* ---------- settings ---------- */
+    const PRESETS = [
+      { name: 'Foodpanda Pink', hex: '#e1216f' },
+      { name: 'Pathao Red', hex: '#ff0f0f' },
+      { name: 'bKash Magenta', hex: '#e2136e' },
+      { name: 'Daraz Orange', hex: '#f85606' },
+      { name: 'Chaldal Tangerine', hex: '#f97316' },
+      { name: 'Kacchi Bhai Gold', hex: '#d97706' },
+      { name: 'Shwapno Green', hex: '#16a34a' },
+      { name: 'Star Kabab Emerald', hex: '#15803d' },
+      { name: 'Meena Teal', hex: '#0d9488' },
+      { name: 'Shohoz Blue', hex: '#2563eb' },
+      { name: 'Secret Recipe Violet', hex: '#7c3aed' },
+      { name: 'Sultan\'s Dine Maroon', hex: '#881337' },
+      { name: 'Gloria Coffee Brown', hex: '#78350f' },
+      { name: 'Takeout Charcoal', hex: '#1e293b' }
+    ];
+
+    let curColor = '#15803d';
+
+    function pickColor(hex) {
+      curColor = hex;
+      const hInput = $('sc_hex');
+      const pInput = $('sc_picker');
+      if (hInput) hInput.value = hex;
+      if (pInput) pInput.value = hex;
+      updateColorPreview(hex);
+    }
+
+    function updateColorPreview(hex) {
+      curColor = hex;
+      applyTheme(hex);
+      const matched = PRESETS.find(p => p.hex.toLowerCase() === hex.toLowerCase());
+      const nameEl = $('selected_preset_name');
+      if (nameEl) nameEl.textContent = matched ? `· ${matched.name}` : '';
+      document.querySelectorAll('.preset-btn').forEach(b => {
+        const isSelected = b.dataset.hex.toLowerCase() === hex.toLowerCase();
+        b.classList.toggle('ring-2', isSelected);
+        b.classList.toggle('ring-offset-2', isSelected);
+        b.classList.toggle('ring-slate-800', isSelected);
+      });
+      const prevBtn = $('preview_btn');
+      if (prevBtn) prevBtn.style.backgroundColor = hex;
+      const prevBadge = $('preview_badge');
+      if (prevBadge) { prevBadge.style.color = hex; prevBadge.style.borderColor = hex; }
+    }
+
+    function vSettings() {
+      curColor = R.color || '#15803d';
+      $('main').innerHTML = head('Settings') + `
+  <form onsubmit="return saveR(event)" class="space-y-4 w-full">
+    
+    <!-- 1. Color Scheme & Branding (Full Width) -->
+    <div class="box p-4 sm:p-5">
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-slate-100">
+        <div>
+          <h2 class="font-bold text-base text-slate-900">Brand Color & Theme</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Select a brand color to match your customer QR menu and admin panel.</p>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 pointer-events-none select-none shrink-0">
+          <span class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Preview:</span>
+          <span id="preview_badge" class="px-2 py-0.5 text-xs font-bold rounded-md border" style="color:${curColor}; border-color:${curColor}">Badge</span>
+          <span id="preview_btn" class="text-white text-xs font-bold px-2.5 py-0.5 rounded-md shadow-2xs" style="background-color:${curColor}">Button</span>
+        </div>
+      </div>
+      
+      <div class="grid sm:grid-cols-2 gap-4 items-center">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <label class="lbl font-medium mb-0">Preset Colors</label>
+            <span id="selected_preset_name" class="text-xs text-brand font-semibold"></span>
+          </div>
+          <div class="flex flex-wrap gap-2.5">
+            ${PRESETS.map(p => `
+              <button type="button" onclick="pickColor('${p.hex}')" data-hex="${p.hex}" title="${p.name}" class="preset-btn w-8 h-8 rounded-full transition-transform active:scale-95 shadow-sm ${p.hex.toLowerCase() === curColor.toLowerCase() ? 'ring-2 ring-offset-2 ring-slate-800' : ''}" style="background-color:${p.hex}"></button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div>
+          <label class="lbl font-medium mb-1.5">Custom Color</label>
+          <div class="flex items-center gap-2">
+            <input type="color" id="sc_picker" value="${curColor}" oninput="pickColor(this.value)" class="w-10 h-9 p-0.5 border border-slate-300 rounded-md cursor-pointer bg-white">
+            <input type="text" id="sc_hex" value="${curColor}" oninput="pickColor(this.value)" maxlength="7" class="inp uppercase !w-28 font-mono text-center font-bold" placeholder="#15803D">
+            <span class="text-xs text-slate-400">Hex code</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Balanced 2-Column Desktop Grid -->
+    <div class="grid lg:grid-cols-2 gap-4 items-start">
+      
+      <!-- Left Column: Restaurant Profile & Billing -->
+      <div class="space-y-4">
+        <!-- 2. Restaurant Profile -->
+        <div class="box p-4 sm:p-5 space-y-3">
+          <h2 class="font-bold text-base text-slate-900 pb-2 border-b border-slate-100">Restaurant Profile</h2>
+          <div><label class="lbl font-medium">Restaurant Name *</label><input id="sn" required class="inp" value="${esc(R.name || '')}"></div>
+          <div><label class="lbl font-medium">Tagline / Slogan</label><input id="stg" class="inp" placeholder="e.g. Authentic Bengali Cuisine & Biryani House" value="${esc(R.tagline || '')}"></div>
+          <div><label class="lbl font-medium">Address</label><input id="sa" class="inp" placeholder="Street, Area, City" value="${esc(R.address || '')}"></div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div><label class="lbl font-medium">Phone / WhatsApp</label><input id="sp" class="inp" placeholder="e.g. 01700-000000" value="${esc(R.phone || '')}"></div>
+            <div><label class="lbl font-medium">Email Address</label><input id="se" type="email" class="inp" placeholder="e.g. info@restaurant.com" value="${esc(R.email || '')}"></div>
+          </div>
+          <div><label class="lbl font-medium">Business / Opening Hours</label><input id="sh" class="inp" placeholder="e.g. 11:00 AM - 11:00 PM (Daily)" value="${esc(R.hours || '')}"></div>
+        </div>
+
+        <!-- 4. Billing, Taxes & Currency -->
+        <div class="box p-4 sm:p-5 space-y-3">
+          <h2 class="font-bold text-base text-slate-900 pb-2 border-b border-slate-100">Billing, Taxes & Currency</h2>
+          <div class="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label class="lbl font-medium">Currency Symbol</label>
+              <input id="scur" class="inp font-bold" value="${esc(R.currency || '৳')}">
+              <span class="text-[11px] text-slate-400">e.g. ৳, $, ₹, Rs, €</span>
+            </div>
+            <div>
+              <label class="lbl font-medium">Tax / VAT on bill (%)</label>
+              <input id="st" type="number" min="0" step="any" class="inp" value="${R.tax_percent || 0}">
+              <span class="text-[11px] text-slate-400">0 for no tax</span>
+            </div>
+            <div>
+              <label class="lbl font-medium">Service Charge (%)</label>
+              <input id="ssc" type="number" min="0" step="any" class="inp" value="${R.service_charge || 0}">
+              <span class="text-[11px] text-slate-400">0 for no charge</span>
+            </div>
+          </div>
+          <div>
+            <label class="lbl font-medium">Invoice Footer Message</label>
+            <input id="sft" class="inp" placeholder="Thank you. Please visit again." value="${esc(R.invoice_footer || 'Thank you. Please visit again.')}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Menu Features & Data Management -->
+      <div class="space-y-4">
+        <!-- 3. Customer Menu & QR Features -->
+        <div class="box p-4 sm:p-5 space-y-3">
+          <h2 class="font-bold text-base text-slate-900 pb-2 border-b border-slate-100">QR Menu & Ordering Features</h2>
+          
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200/70 space-y-2.5">
+            <label class="flex items-center justify-between cursor-pointer">
+              <div>
+                <span class="font-semibold text-slate-800 text-sm block">Allow Customer Ordering</span>
+                <span class="text-xs text-slate-500">If disabled, customer menu acts as digital catalog without order placement.</span>
+              </div>
+              <input type="checkbox" id="so_allow" ${R.allow_orders !== false ? 'checked' : ''} class="w-4 h-4 cursor-pointer">
+            </label>
+            <div class="border-t border-slate-200/60 pt-2">
+              <label class="flex items-center justify-between cursor-pointer">
+                <div>
+                  <span class="font-semibold text-slate-800 text-sm block">Kitchen Notes</span>
+                  <span class="text-xs text-slate-500">Allow customers to write custom cooking notes with their order.</span>
+                </div>
+                <input type="checkbox" id="sn_allow" ${R.allow_notes !== false ? 'checked' : ''} class="w-4 h-4 cursor-pointer">
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="lbl font-medium">Estimated Preparation Time</label>
+            <input id="spt" class="inp" placeholder="e.g. 15-20 mins" value="${esc(R.prep_time || '15-20 mins')}">
+            <span class="text-[11px] text-slate-400">Shown to diners after order placement.</span>
+          </div>
+
+          <div class="pt-1 space-y-2">
+            <label class="lbl font-medium">Guest Wi-Fi Details (Optional)</label>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="lbl text-[11px]">Wi-Fi Network (SSID)</label>
+                <input id="swf_n" class="inp" placeholder="e.g. Restaurant_Guest" value="${esc(R.wifi_name || '')}">
+              </div>
+              <div>
+                <label class="lbl text-[11px]">Wi-Fi Password</label>
+                <input id="swf_p" class="inp" placeholder="Password" value="${esc(R.wifi_pass || '')}">
+              </div>
+            </div>
+            <div>
+              <label class="lbl text-[11px]">Wi-Fi QR Code Image URL (Optional)</label>
+              <input id="swf_qr" type="url" class="inp" placeholder="https://.../wifi-qr.png" value="${esc(R.wifi_qr || '')}">
+              <span class="text-[11px] text-slate-400">Leave blank to auto-generate scan-to-connect QR code from Wi-Fi details.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Data Management & Backup -->
+        <div class="box p-4 sm:p-5 bg-slate-50/80 border-slate-200 space-y-2.5">
+          <h2 class="font-bold text-base text-slate-900 pb-2 border-b border-slate-200/70">Data Management & Backup</h2>
+          <p class="text-xs text-slate-500">Download a complete JSON backup of all restaurant data (menu items, orders, tables, and settings) or reset to defaults.</p>
+          <div class="flex flex-wrap gap-2.5 pt-1">
+            <button type="button" onclick="exportBackup()" class="btn2 sm !py-2 flex items-center gap-1.5 font-semibold">
+              <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Download Backup (JSON)
+            </button>
+            ${DEMO ? `
+              <button type="button" onclick="confirmReset()" class="btn2 sm !py-2 text-red-600 border-red-200 hover:bg-red-50 font-semibold">
+                Reset Demo Data
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Save Action Bar -->
+    <div class="box p-4 flex items-center justify-between gap-3 bg-white border-slate-200/80 sticky bottom-3 shadow-md z-10">
+      <div class="flex items-center gap-3">
+        <button type="submit" class="btn !py-2.5 !px-6 text-sm font-bold shadow-sm">Save All Settings</button>
+        <span id="save_status" class="text-xs text-slate-500 font-medium"></span>
+      </div>
+      <span class="hidden sm:inline-block text-xs text-slate-400">Changes apply immediately to your menu</span>
+    </div>
+  </form>`;
+      updateColorPreview(curColor);
+    }
+
+    async function confirmReset() {
+      const ok = await confirmDialog({
+        title: 'Reset Demo Data',
+        message: 'Reset all demo data back to default? All current orders, items, and tables will be restored to demo defaults.',
+        confirmText: 'Reset Data',
+        danger: true
+      });
+      if (ok) {
+        db.reset();
+        location.reload();
+      }
+    }
+
+    async function saveR(e) {
+      e.preventDefault();
+      const row = {
+        name: $('sn').value.trim(),
+        tagline: $('stg').value.trim() || null,
+        address: $('sa').value.trim() || null,
+        phone: $('sp').value.trim() || null,
+        email: $('se').value.trim() || null,
+        hours: $('sh').value.trim() || null,
+        color: curColor || '#15803d',
+        allow_orders: $('so_allow').checked,
+        allow_notes: $('sn_allow').checked,
+        prep_time: $('spt').value.trim() || '15-20 mins',
+        wifi_name: $('swf_n').value.trim() || null,
+        wifi_pass: $('swf_p').value.trim() || null,
+        wifi_qr: $('swf_qr').value.trim() || null,
+        currency: $('scur').value.trim() || '৳',
+        tax_percent: +$('st').value || 0,
+        service_charge: +$('ssc').value || 0,
+        invoice_footer: $('sft').value.trim() || 'Thank you. Please visit again.'
+      };
+
+      const { error } = await db.from('restaurant').update(row).eq('id', 1);
+      if (error) return alert(error.message);
+      await loadR();
+      toast('Settings saved successfully!');
+      vSettings();
+      return false;
+    }
+
+    async function exportBackup() {
+      const [r, tb, m, cp, o, inv] = await Promise.all([
+        db.from('restaurant').select(),
+        db.from('tables').select(),
+        db.from('menu_items').select(),
+        db.from('coupons').select(),
+        db.from('orders').select('*,order_items(*)'),
+        db.from('invoices').select()
+      ]);
+      const backup = {
+        date: new Date().toISOString(),
+        restaurant: r.data,
+        tables: tb.data,
+        menu_items: m.data,
+        coupons: cp.data,
+        orders: o.data,
+        invoices: inv.data
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `restaurant-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    }
+    init({ page: 'settings', title: 'Settings', view: vSettings });
+  </script>
+</body>
+
+</html>

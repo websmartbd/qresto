@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orders · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="assets/tw.js"></script>
+<link rel="stylesheet" href="assets/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../demo-data.js"></script>
+<script src="../config.js"></script>
+</head>
+<body class="bg-neutral-100 text-ink text-[13px] font-sans">
+<main id="main" class="p-3 pb-8 lg:p-6"></main>
+<script src="assets/app.js"></script>
+<script src="assets/billing.js"></script>
+<script>
+let OF='active', dataAllOrders=[];
+const FL={active:'Active orders',completed:'Completed',cancelled:'Cancelled'},OG='grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
+let orderBc;
+try { orderBc = new BroadcastChannel('qrmenu_demo_v2'); } catch(e){}
+
+function getWaiterCalls(){
+  try{ return JSON.parse(localStorage.getItem('qrmenu_waiter_calls')||'[]'); }catch(e){ return []; }
+}
+function dismissWaiterCall(id, table){
+  const tblStr = String(table || '');
+  let calls = getWaiterCalls();
+  const c = calls.find(x => x.id === id || (tblStr && String(x.table) === tblStr));
+  const dismissedTbl = tblStr || (c ? String(c.table) : '');
+  calls = calls.filter(x => x.id !== id && (dismissedTbl ? String(x.table) !== dismissedTbl : true));
+  localStorage.setItem('qrmenu_waiter_calls', JSON.stringify(calls));
+  try {
+    if(orderBc) orderBc.postMessage({ t: 'waiter_dismiss', id: id, table: dismissedTbl });
+  } catch(e){}
+  vOrders();
+}
+function renderWaiterBanner(){
+  const allCalls = getWaiterCalls();
+  if(!allCalls.length) return '';
+  // Deduplicate by table to prevent multiple banners for the same table
+  const map = new Map();
+  for(const c of allCalls){
+    const key = String(c.table || '');
+    if(!map.has(key) || (c.time || 0) > (map.get(key).time || 0)){
+      map.set(key, c);
+    }
+  }
+  const calls = Array.from(map.values()).sort((a,b) => (b.time||0) - (a.time||0));
+  if(!calls.length) return '';
+  return `<div class="mb-4 space-y-2.5">
+    ${calls.map(c => `
+      <div class="relative overflow-hidden bg-gradient-to-r from-amber-50 via-white to-amber-50/50 border border-amber-200/90 rounded-2xl p-3 sm:p-3.5 shadow-xs flex items-center justify-between gap-3 transition-all hover:border-amber-300">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="relative w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <span class="text-xl">🔔</span>
+            <span class="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+            </span>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-slate-900 text-sm tracking-tight">Table ${esc(c.table)}</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-2xs">${esc(c.req || 'Waiter needed')}</span>
+            </div>
+            <p class="text-[11px] font-medium text-slate-500 mt-0.5 flex items-center gap-1.5">
+              <span>${new Date(c.time || Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+              <span class="text-slate-300">•</span>
+              <span class="text-amber-700 font-semibold">Needs staff attention</span>
+            </p>
+          </div>
+        </div>
+        <button type="button" onclick="dismissWaiterCall('${c.id}','${esc(c.table)}')" class="inline-flex items-center gap-1.5 bg-white hover:bg-emerald-50 active:scale-95 text-slate-700 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-xl text-xs border border-slate-200 hover:border-emerald-300 shadow-2xs transition shrink-0 cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          <span>Dismiss</span>
+        </button>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function printKOT(id){
+  const o = dataAllOrders.find(x => x.id === id);
+  if(!o) return;
+  const is58 = (localStorage.getItem('qrmenu_printer_width') || '80') === '58';
+  const tbl = o.tables?.number || '?';
+  $('inv').innerHTML = `<div class="rc ${is58 ? 'rc-58' : ''}">
+    <div style="text-align:center;font-weight:bold;font-size:${is58 ? '14px' : '16px'};border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:6px;">*** KITCHEN ORDER TOKEN ***</div>
+    <div style="display:flex;justify-content:space-between;font-size:${is58 ? '12px' : '14px'};font-weight:bold;margin-bottom:4px;">
+      <span>TABLE: ${esc(tbl)}</span>
+      <span>ORDER #${o.no}</span>
+    </div>
+    <div style="font-size:${is58 ? '10px' : '11px'};margin-bottom:6px;">Time: ${tm(o.created_at)} · ${dt(o.created_at)}</div>
+    <hr style="border-top:1px dashed #000;margin:6px 0;">
+    <table style="width:100%;font-size:${is58 ? '11px' : '13px'};border-collapse:collapse;">
+      ${o.order_items.map(i=>`<tr><td style="font-weight:bold;padding:3px 0;width:${is58 ? '28px' : '38px'};font-size:${is58 ? '13px' : '15px'};vertical-align:top;">${i.qty}×</td><td style="font-weight:bold;padding:3px 0;font-size:${is58 ? '12px' : '14px'};">${esc(i.name)}</td></tr>`).join('')}
+    </table>
+    ${o.note ? `<hr style="border-top:1px dashed #000;margin:6px 0;"><div style="font-size:${is58 ? '11px' : '12px'};font-weight:bold;padding:4px;background:#eee;">NOTE: ${esc(o.note)}</div>` : ''}
+    <hr style="border-top:2px solid #000;margin:8px 0 0 0;">
+  </div>`;
+  setTimeout(() => window.print(), 150);
+}
+
+async function openShiftModal(fromTableId, fromTableNo){
+  const { data: allTables = [] } = await db.from('tables').select().order('number');
+  const otherTables = allTables.filter(t => String(t.id) !== String(fromTableId));
+  if(!otherTables.length){
+    return alert('No other tables available to shift to.');
+  }
+  modal(`<div class="p-5 space-y-4">
+    <div class="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+      <span class="text-2xl">🔀</span>
+      <div>
+        <h3 class="font-extrabold text-base text-slate-900">Shift / Merge Table ${esc(fromTableNo)}</h3>
+        <p class="text-xs text-slate-500">Move all active orders to another table or combine bills</p>
+      </div>
+    </div>
+    <div>
+      <label class="block text-xs font-bold text-slate-700 mb-1.5">Select Destination Table</label>
+      <select id="shift_target_tbl" class="inp font-semibold w-full">
+        ${otherTables.map(t => {
+          const hasOrders = !!G[t.id];
+          return `<option value="${t.id}">Table ${esc(t.number)}${hasOrders ? ' (Has active orders · Will Merge)' : ' (Empty table)'}</option>`;
+        }).join('')}
+      </select>
+    </div>
+    <div class="p-3 bg-amber-50 border border-amber-200/90 rounded-xl text-xs text-amber-900 space-y-1">
+      <p class="font-bold flex items-center gap-1"><span>💡</span> How Table Shifting Works:</p>
+      <p>All active orders from Table ${esc(fromTableNo)} will be moved. If the target table already has open orders, they will be merged into a single table bill.</p>
+    </div>
+    <div class="flex gap-2.5 pt-1">
+      <button type="button" onclick="closeM()" class="btn2 flex-1">Cancel</button>
+      <button type="button" onclick="confirmShiftTable('${fromTableId}', '${esc(fromTableNo)}')" class="btn flex-1 bg-brand text-white font-bold py-2.5 rounded-xl transition">
+        Confirm Shift / Merge
+      </button>
+    </div>
+  </div>`);
+}
+
+async function confirmShiftTable(fromTableId, fromTableNo){
+  const targetSelect = $('shift_target_tbl');
+  if(!targetSelect) return;
+  const targetId = targetSelect.value;
+  const targetName = targetSelect.options[targetSelect.selectedIndex].text.split(' (')[0];
+  closeM();
+  const { error } = await db.from('orders').update({ table_id: targetId }).eq('table_id', fromTableId).in('status', ['new', 'preparing', 'served']);
+  if(error){
+    return alert('Could not shift table: ' + error.message);
+  }
+  toast(`Table ${fromTableNo} shifted to ${targetName} successfully!`);
+  vOrders();
+  badge();
+}
+
+window.renderSoundBtn = () => {
+  const b = $('snd_btn');
+  if(b) b.innerHTML = `<span>${soundEnabled ? '🔔 Sound ON' : '🔕 Muted'}</span>`;
+};
+
+async function vOrders(){
+  const sel=`<div class="flex items-center gap-2 w-full lg:w-auto">
+    <button type="button" id="snd_btn" onclick="toggleSound()" class="btn2 !py-1.5 !px-2.5 flex items-center gap-1.5 text-xs font-semibold shrink-0" title="Toggle audio notification">
+      <span>${soundEnabled ? '🔔 Sound ON' : '🔕 Muted'}</span>
+    </button>
+    <select onchange="OF=this.value;vOrders()" class="inp flex-1 lg:flex-none lg:!w-auto font-medium">${Object.entries(FL).map(([k,l])=>`<option value="${k}" ${k===OF?'selected':''}>${l}</option>`).join('')}</select>
+  </div>`,act=OF==='active';
+  let qy=db.from('orders').select('*,tables(number),order_items(*)');
+  qy=act?qy.in('status',['new','preparing','served']).order('created_at'):qy.eq('status',OF==='completed'?'paid':'cancelled').order('created_at',{ascending:false});
+  const data=(await qy).data||[];
+  dataAllOrders = data;
+  if(act){ACT=data.length;renderNav()}
+  const waiterHtml = renderWaiterBanner();
+  if(!act){
+    const L=data.slice(0,60);
+    $('main').innerHTML=head('Orders',sel)+waiterHtml+(L.length?`<div class="grid ${OG} gap-4">${L.map(o=>`
+      <section class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+          <div class="flex items-center gap-2">
+            <h2 class="font-extrabold text-base text-slate-900">Table ${esc(o.tables?.number||'?')}</h2>
+            <span class="text-xs text-slate-400">#${o.no}</span>
+          </div>
+          <span class="font-bold text-base text-slate-900 tabular-nums">${tk(o.total)}</span>
+        </div>
+        <div class="p-4 flex-1">
+          <p class="text-xs text-slate-400 mb-2">${dt(o.created_at)}</p>
+          <ul class="space-y-1.5 text-sm">
+            ${o.order_items.map(i=>`<li class="flex justify-between items-baseline gap-2 text-slate-700"><span class="font-medium"><b class="text-slate-900 inline-block w-6">${i.qty}×</b> ${esc(i.name)}</span><span class="text-xs text-slate-400 tabular-nums">${tk(i.price*i.qty)}</span></li>`).join('')}
+          </ul>
+          ${o.note?`<div class="mt-2.5 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 text-xs text-amber-800 break-words"><span class="font-bold">Note:</span> ${esc(o.note)}</div>`:''}
+          ${o.coupon?`<div class="mt-2 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-1.5 text-xs text-emerald-800 flex justify-between font-medium"><span>Coupon: <b>${esc(o.coupon)}</b></span><span>-${tk(o.discount||0)}</span></div>`:''}
+        </div>
+        ${o.invoice_id?`<div class="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-xs text-slate-500 font-medium"><span>Invoice #${o.invoice_id}</span><div class="flex items-center gap-2"><button onclick="printKOT('${o.id}')" class="lk font-semibold">KOT</button><button onclick="reprint(${o.invoice_id})" class="lk flex items-center gap-1 font-semibold"><span>Print</span> ↗</button></div></div>`:''}
+      </section>`).join('')}</div>`:empty('No '+OF+' orders','Orders will show here.'));
+    return;
+  }
+  G={};data.forEach(o=>(G[o.table_id]=G[o.table_id]||[]).push(o));
+  const ks=Object.keys(G);
+  $('main').innerHTML=head('Orders',sel)+waiterHtml+(ks.length?`<div class="grid ${OG} gap-4">${ks.map(k=>{
+    const os=G[k],sum=os.reduce((s,o)=>s+Number(o.total),0);
+    const anyNew=os.some(o=>o.status==='new');
+    const anyPreparing=os.some(o=>o.status==='preparing');
+    const allServed=os.every(o=>o.status==='served');
+
+    const topAccent = anyNew ? 'bg-amber-500' : anyPreparing ? 'bg-sky-500' : 'bg-emerald-600';
+    const statusBadge = anyNew
+      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>New order</span>`
+      : anyPreparing
+      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-800"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>Preparing</span>`
+      : `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>Served</span>`;
+
+    let actionBtn = '';
+    if (anyNew) {
+      const target = os.find(o=>o.status==='new');
+      const lbl = os.length > 1 ? `Start preparing #${target.no}` : 'Start preparing';
+      actionBtn = `<div class="p-3 bg-slate-50 border-t border-slate-100 flex flex-col gap-1.5">
+        <button onclick="setSt('${target.id}','preparing')" class="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition shadow-sm">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <span>${lbl}</span>
+        </button>
+        <div class="flex justify-between items-center text-xs text-slate-400 px-1 pt-0.5">
+          <span>In queue for kitchen</span>
+          <button onclick="bill('${k}')" class="text-slate-500 hover:text-slate-800 hover:underline">Bill now</button>
+        </div>
+      </div>`;
+    } else if (anyPreparing) {
+      const target = os.find(o=>o.status==='preparing');
+      const lbl = os.length > 1 ? `Mark #${target.no} served` : 'Mark as served';
+      actionBtn = `<div class="p-3 bg-slate-50 border-t border-slate-100 flex flex-col gap-1.5">
+        <button onclick="setSt('${target.id}','served')" class="w-full bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition shadow-sm">
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+          <span>${lbl}</span>
+        </button>
+        <div class="flex justify-between items-center text-xs text-slate-400 px-1 pt-0.5">
+          <span>Cooking in progress</span>
+          <button onclick="bill('${k}')" class="text-slate-500 hover:text-slate-800 hover:underline">Bill now</button>
+        </div>
+      </div>`;
+    } else {
+      actionBtn = `<div class="p-3 bg-emerald-50/50 border-t border-emerald-100 flex flex-col gap-1">
+        <button onclick="bill('${k}')" class="w-full bg-brand hover:bg-emerald-800 active:bg-emerald-900 text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition shadow-sm">
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span>Bill and take payment</span>
+        </button>
+        <p class="text-center text-[11px] text-emerald-700 font-medium pt-0.5">All items served · Ready to checkout</p>
+      </div>`;
+    }
+
+    return `<section class="rounded-xl border border-slate-200/90 bg-white shadow-sm overflow-hidden flex flex-col transition hover:shadow-md">
+      <div class="h-1.5 w-full ${topAccent}"></div>
+      <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50/50">
+        <div class="flex items-center gap-2 min-w-0">
+          <h2 class="font-extrabold text-base text-slate-900 truncate">Table ${esc(os[0].tables?.number||'?')}</h2>
+          ${statusBadge}
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button" onclick="openShiftModal('${k}','${esc(os[0].tables?.number||'?')}')" class="text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-md px-2 py-1 shadow-2xs transition flex items-center gap-1" title="Shift orders to another table or merge bills">
+            <span>Shift ⇄</span>
+          </button>
+          <span class="font-black text-base text-slate-900 tabular-nums">${tk(sum)}</span>
+        </div>
+      </div>
+      <div class="p-4 flex-1 divide-y divide-slate-100 space-y-3">
+        ${os.map((o, idx)=>{
+          return `<div class="${idx > 0 ? 'pt-3' : ''}">
+            <div class="flex justify-between items-center text-xs mb-2 pb-1 border-b border-slate-50">
+              <span class="text-slate-500 font-medium">Order #${o.no} <span class="text-slate-400 font-normal">· ${tm(o.created_at)}</span></span>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="printKOT('${o.id}')" class="text-slate-600 hover:text-slate-900 font-semibold text-[11px] px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 transition flex items-center gap-1" title="Print Kitchen Order Token">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+                  <span>KOT</span>
+                </button>
+                ${os.length > 1 ? pill(o.status) : ''}
+                ${o.status !== 'served' ? `<button onclick="cancelO('${o.id}')" class="text-red-600 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded hover:bg-red-50 transition">Cancel</button>` : ''}
+              </div>
+            </div>
+            <ul class="space-y-1.5 text-sm">
+              ${o.order_items.map(i=>`<li class="flex justify-between items-baseline gap-2 text-slate-700"><span class="font-medium leading-snug"><b class="text-slate-900 inline-block w-6">${i.qty}×</b> ${esc(i.name)}</span><span class="text-xs text-slate-400 tabular-nums shrink-0">${tk(i.price*i.qty)}</span></li>`).join('')}
+            </ul>
+            ${o.note ? `<div class="mt-2.5 bg-amber-50 border border-amber-200/80 rounded-md px-2.5 py-1.5 text-xs text-amber-800 break-words flex items-start gap-1.5"><span class="font-bold shrink-0">Note:</span> <span>${esc(o.note)}</span></div>` : ''}
+            ${o.coupon ? `<div class="mt-2 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-1.5 text-xs text-emerald-800 flex items-center justify-between font-medium"><span>Coupon: <b>${esc(o.coupon)}</b></span><span class="font-bold text-emerald-700">-${tk(o.discount||0)}</span></div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+      ${actionBtn}
+    </section>`;
+  }).join('')}</div>`:empty('No active orders','New orders appear here with a sound.'));
+}
+if(orderBc){
+  orderBc.addEventListener('message', e => {
+    if (e.data && e.data.t === 'waiter_call') {
+      beep('call');
+      toast('🔔 Waiter called from Table ' + e.data.table);
+      vOrders();
+    }
+  });
+}
+window.addEventListener('storage', e => {
+  if (e.key === 'qrmenu_waiter_calls') vOrders();
+});
+init({page:'orders',title:'Orders',view:vOrders,live:true});
+</script>
+</body>
+</html>

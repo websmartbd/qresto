@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="assets/tw.js"></script>
+<link rel="stylesheet" href="assets/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../demo-data.js"></script>
+<script src="../config.js"></script>
+</head>
+<body class="bg-neutral-100 text-ink text-[13px] font-sans">
+<main id="main" class="p-3 pb-8 lg:p-6"></main>
+<script src="assets/app.js"></script>
+<script src="assets/billing.js"></script>
+<script src="assets/charts.js"></script>
+<script>
+let RI=[],RG={k:'7'};
+/* ---------- reports ---------- */
+function rangeOf(){
+  const t=sd(new Date()),e=ad(t,1);
+  if(RG.k==='today')return [t,e];
+  if(RG.k==='30')return [ad(t,-29),e];
+  if(RG.k==='month')return [new Date(t.getFullYear(),t.getMonth(),1),e];
+  if(RG.k==='custom')return [pd(RG.f),ad(pd(RG.t),1)];
+  return [ad(t,-6),e];
+}
+function setRg(k){RG={k};vReport()}
+function applyRg(){const f=$('rf').value,t=$('rt').value;if(!f||!t)return;if(f>t)return toast('From date must be before To date');RG={k:'custom',f,t};vReport()}
+async function vReport(){
+  CH.length=0;
+  const [f,e]=rangeOf(),len=Math.round((e-f)/864e5),pf=ad(f,-len);
+  const [a,b,c]=await Promise.all([
+    db.from('invoices').select().gte('created_at',iso(pf)).order('created_at',{ascending:false}),
+    db.from('order_items').select('name,qty,price,orders!inner(status,created_at)').eq('orders.status','paid').gte('orders.created_at',iso(pf)),
+    db.from('orders').select('id,table_id,total,status,created_at,tables(number)').gte('created_at',iso(pf))]);
+  const all=a.data||[],inv=all.filter(i=>inR(i.created_at,f,e)),pinv=all.filter(i=>inR(i.created_at,pf,f)),its=b.data||[],
+    cur=its.filter(i=>inR(i.orders.created_at,f,e)),prv=its.filter(i=>inR(i.orders.created_at,pf,f)),
+    sum=(x,k='total')=>x.reduce((s,i)=>s+Number(i[k]),0),qty=x=>x.reduce((s,i)=>s+i.qty,0);
+  RI=inv;
+  const [dl_,dv]=dayVals(inv,f,e),hs=inv.map(i=>new Date(i.created_at).getHours()),lo=Math.min(10,...hs),hi=Math.max(21,...hs),hl=[],hv=[];
+  for(let h=lo;h<=hi;h++){hl.push(fh(h));hv.push(inv.filter(i=>new Date(i.created_at).getHours()===h).reduce((s,i)=>s+Number(i.total),0))}
+  const trend=len>14?cfgLine(dl_,dv):cfgBar(dl_,dv);if(len>14)trend.data.datasets[0].pointRadius=0;
+  CH.push(['c1',trend],['c2',cfgBar(hl,hv,brandLightColor('80'),brandColor())]);
+  const top=topOf(cur,8).map(x=>[x.n,x.q]),ords=(c.data||[]).filter(o=>o.status!=='cancelled'&&inR(o.created_at,f,e)),tb={};
+  ords.forEach(o=>{const k=o.tables?.number||'?';(tb[k]=tb[k]||{n:k,o:0,s:0}).o++;tb[k].s+=Number(o.total)});
+  const tl=Object.values(tb).sort((x,y)=>y.o-x.o||x.n.localeCompare(y.n,undefined,{numeric:true}));
+  if(top.length)CH.push(['c3',{
+    type:'bar',
+    data:{
+      labels:top.map(x=>x[0]),
+      datasets:[{data:top.map(x=>x[1]),backgroundColor:brandColor(),hoverBackgroundColor:brandHoverColor(),borderRadius:3,maxBarThickness:innerWidth<640?16:20}]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{mode:'nearest',axis:'y',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{title:c=>top[c[0].dataIndex]?.[0]||c[0].label,label:c=>' '+c.parsed.x+' sold'}}
+      },
+      scales:{
+        x:{beginAtZero:true,grid:{color:'#f0f0f0'},border:{display:false},ticks:{precision:0}},
+        y:{
+          grid:{display:false},
+          border:{display:false},
+          ticks:{
+            font:{size:innerWidth<640?11:12},
+            callback:function(val){
+              const lbl=this.getLabelForValue(val);
+              return innerWidth<640&&lbl.length>14?lbl.slice(0,13)+'…':lbl;
+            }
+          }
+        }
+      }
+    }
+  }]);
+  const nm=x=>x.x?'Others':'Table '+x.n,tr=tl.slice(0,7).concat(tl.length>7?[{x:1,o:tl.slice(7).reduce((q,x)=>q+x.o,0),s:tl.slice(7).reduce((q,x)=>q+x.s,0)}]:[]);
+  if(tl.length)CH.push(['c4',{
+    type:'doughnut',
+    data:{labels:tr.map(x=>nm(x)+' · '+x.o),datasets:[{data:tr.map(x=>x.o),backgroundColor:(typeof PAL !== 'undefined' ? PAL : ['#15803d','#22c55e','#86efac','#0ea5e9','#f59e0b','#a78bfa','#f87171','#a3a3a3']),borderWidth:2}]},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      cutout:'60%',
+      plugins:{
+        legend:{
+          position:innerWidth<640?'bottom':'right',
+          labels:{boxWidth:10,boxHeight:10,padding:innerWidth<640?8:12,font:{size:innerWidth<640?11:12}}
+        },
+        tooltip:{callbacks:{label:c=>' '+nm(tr[c.dataIndex])+': '+tr[c.dataIndex].o+' orders · '+tk(tr[c.dataIndex].s)}}
+      }
+    }
+  }]);
+  $('main').innerHTML=head('Reports')+`<div class="box p-3 mb-3 flex flex-wrap items-end gap-3 justify-between">
+   <div class="grid grid-cols-2 sm:flex gap-1.5 w-full lg:w-auto">${[['today','Today'],['7','Last 7 days'],['30','Last 30 days'],['month','This month']].map(([k,l])=>`<button onclick="setRg('${k}')" class="${RG.k===k?'btn':'btn2'} text-center !px-2.5 sm:!px-3.5 text-xs sm:text-[13px]">${l}</button>`).join('')}</div>
+   <div class="grid grid-cols-2 sm:flex items-end gap-2 w-full lg:w-auto">
+     <div class="min-w-0 lg:w-36"><label class="lbl">From</label><input id="rf" type="date" value="${ymd(f)}" class="inp !text-xs sm:!text-[13px] !px-2"></div>
+     <div class="min-w-0 lg:w-36"><label class="lbl">To</label><input id="rt" type="date" value="${ymd(ad(e,-1))}" class="inp !text-xs sm:!text-[13px] !px-2"></div>
+     <button onclick="applyRg()" class="btn2 col-span-2 sm:col-span-1 shrink-0 w-full sm:w-auto text-center !py-2 sm:!py-[7px] text-xs sm:text-[13px]">Apply</button>
+   </div></div>
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3 mb-3 sm:mb-4 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1">${st('Total sales',tk(sum(inv)),dl(sum(inv),sum(pinv)))}${st('Paid bills',inv.length,dl(inv.length,pinv.length))}${st('Average bill',tk(inv.length?sum(inv)/inv.length:0))}${st('Items sold',qty(cur),dl(qty(cur),qty(prv)))}${st('Tax collected',tk(sum(inv,'tax')))}</div>
+  <div class="grid lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5"><div class="box p-3 sm:p-4 lg:col-span-2">${ct('Sales trend',fd(f)+' – '+fd(ad(e,-1)))}<div class="relative h-56 sm:h-60"><canvas id="c1"></canvas></div></div><div class="box p-3 sm:p-4">${ct('Busy hours','sales by hour')}<div class="relative h-56 sm:h-60"><canvas id="c2"></canvas></div></div></div>
+  <div class="grid lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5"><div class="box p-3 sm:p-4 lg:col-span-2">${ct('Top items','by quantity sold')}${top.length?`<div class="relative" style="height:${Math.max(160,top.length*36+30)}px"><canvas id="c3"></canvas></div>`:empty('No sales in this period','')}</div><div class="box p-3 sm:p-4">${ct('Orders by table',ords.length+' orders')}${tl.length?'<div class="relative h-72 sm:h-64"><canvas id="c4"></canvas></div>':empty('No orders in this period','')}</div></div>
+  <div class="box overflow-hidden"><div class="p-3 sm:p-4 pb-2">${ct('Invoices',inv.length+' in period','<button onclick="csv()" class="btn2 sm"><span class="hidden sm:inline">Download </span>CSV</button>')}</div>
+  ${inv.map(i=>`<div class="row"><div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">#${i.id} · Table ${esc(i.table_no||'')}</p><p class="text-xs text-slate-500 truncate">${dt(i.created_at)}${i.coupon?' · '+esc(i.coupon):''}</p></div><b class="text-sm shrink-0 whitespace-nowrap">${tk(i.total)}</b><button onclick="reprint(${i.id})" class="lk shrink-0 text-xs sm:text-sm">Print</button></div>`).join('')||empty('No invoices in this period','')}</div>`;
+  drawCharts();
+}
+function csv(){
+  const rows=[['Invoice','Date','Table','Subtotal','Discount','Coupon','Tax','Total'],...RI.map(i=>[i.id,new Date(i.created_at).toLocaleString('en-GB'),i.table_no,i.subtotal,i.discount,i.coupon||'',i.tax,i.total])];
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n')],{type:'text/csv'}));a.download='invoices.csv';a.click();
+}
+init({page:'report',title:'Reports',view:vReport});
+</script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Menu items · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="assets/tw.js"></script>
+<link rel="stylesheet" href="assets/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../demo-data.js"></script>
+<script src="../config.js"></script>
+</head>
+<body class="bg-neutral-100 text-ink text-[13px] font-sans">
+<main id="main" class="p-3 pb-8 lg:p-6"></main>
+<script src="assets/app.js"></script>
+<script>
+let M=[],q='';
+let editingVariants = [], editingAddons = [];
+/* ---------- menu items ---------- */
+async function vMenu(){
+  M=(await db.from('menu_items').select().order('category').order('name')).data||[];
+  $('main').innerHTML=`<div class="flex flex-wrap items-center gap-3 mb-4"><h1 class="hidden lg:block text-xl font-bold lg:mr-auto">Menu items</h1><div class="flex gap-2 w-full lg:w-auto"><input oninput="q=this.value.toLowerCase();drawMenu()" class="inp flex-1 min-w-0 lg:!w-64 lg:flex-none" placeholder="Search items or category"><button onclick="openItem(0)" class="btn shrink-0 hidden lg:block">Add item</button></div></div><div id="ml" class="box"></div>`;
+  drawMenu();
+}
+function drawMenu(){
+  const L=M.filter(i=>(i.name+' '+i.category).toLowerCase().includes(q));
+  $('ml').innerHTML=L.map(i=>{
+    const hasVars = Array.isArray(i.variants) && i.variants.length > 0;
+    const hasAdds = Array.isArray(i.addons) && i.addons.length > 0;
+    return `<div class="row"><div class="relative w-12 h-12 rounded-md bg-slate-100 shrink-0 overflow-hidden flex items-center justify-center font-bold text-slate-400">${esc(i.name[0])}${i.image_url?`<img src="${esc(i.image_url)}" alt="${esc(i.name)}" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-200" onerror="this.remove()">`:''}</div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <p class="font-semibold text-sm truncate">${esc(i.name)}</p>
+        ${hasVars ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">${i.variants.length} Sizes</span>` : ''}
+        ${hasAdds ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">${i.addons.length} Extras</span>` : ''}
+      </div>
+      <p class="text-xs text-slate-500 mt-0.5">${esc(i.category)} · ${pr(i)<i.price?`<b class="text-brand">${tk(pr(i))}</b> <s class="text-slate-400">${tk(i.price)}</s>`:`<b class="text-slate-700">${tk(i.price)}</b>`}${hasVars ? ` <span class="text-[11px] text-slate-400">(${i.variants.map(v => v.name).join(', ')})</span>` : ''}</p>
+      <p class="text-xs mt-1 sm:hidden"><button onclick="openItem(${i.id})" class="lk mr-3">Edit</button><button onclick="delItem(${i.id})" class="text-red-600 text-sm">Delete</button></p>
+    </div>
+    ${sw(i.available,`tog(${i.id},${!i.available})`)}<div class="hidden sm:flex gap-3 w-28 justify-end"><button onclick="openItem(${i.id})" class="lk">Edit</button><button onclick="delItem(${i.id})" class="text-sm text-red-600">Delete</button></div></div>`;
+  }).join('')||empty(M.length?'No match':'No items yet','Press Add item to create your first food item.');
+}
+
+function openItem(id){
+  const i=M.find(x=>x.id===id)||{available:true},cs=[...new Set(M.map(x=>x.category))];
+  editingVariants = Array.isArray(i.variants) ? JSON.parse(JSON.stringify(i.variants)) : [];
+  editingAddons = Array.isArray(i.addons) ? JSON.parse(JSON.stringify(i.addons)) : [];
+
+  modal(`<form onsubmit="return saveItem(event,${id})" class="p-5 space-y-4"><h3>${id?'Edit Food Item':'New Food Item'}</h3>
+  <div>
+    <label class="lbl font-semibold text-xs text-slate-700">Dish Name</label>
+    <input id="fn" required class="inp font-medium" placeholder="e.g. Kacchi Biryani" value="${esc(i.name||'')}">
+  </div>
+  <div>
+    <label class="lbl font-semibold text-xs text-slate-700">Category</label>
+    <input id="fc" required list="cl" class="inp" placeholder="e.g. Rice, Curry, Drinks..." value="${esc(i.category||'')}">
+    <datalist id="cl">${cs.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  </div>
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="lbl font-semibold text-xs text-slate-700">Base Price (৳)</label>
+      <input id="fp" type="number" min="0" step="any" required class="inp font-bold" placeholder="0.00" value="${i.price??''}" oninput="syncDefaultVarPrice(this.value)">
+    </div>
+    <div>
+      <label class="lbl font-semibold text-xs text-slate-700">Offer Price (৳)</label>
+      <input id="fo" type="number" min="0" step="any" class="inp text-brand font-bold" placeholder="Optional" value="${i.offer_price??''}">
+    </div>
+  </div>
+
+  <!-- Variants / Portions Section -->
+  <div class="bg-slate-50/90 border border-slate-200/90 rounded-xl p-3.5 space-y-2.5">
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+          <span>Portions & Sizes (Variants)</span>
+          <span class="text-[10px] font-normal text-slate-400">e.g. Half / Full / 1:2</span>
+        </span>
+        <span class="text-[11px] text-slate-500 block">Allow customer to pick plate size or portion with specific price</span>
+      </div>
+      <button type="button" onclick="addVariant()" class="text-xs bg-white border border-slate-300 hover:border-brand hover:text-brand font-bold px-2.5 py-1 rounded-lg shadow-2xs transition shrink-0">
+        + Add Size
+      </button>
+    </div>
+    <div id="var_list" class="space-y-2 pt-1"></div>
+  </div>
+
+  <!-- Add-ons / Extras Section -->
+  <div class="bg-slate-50/90 border border-slate-200/90 rounded-xl p-3.5 space-y-2.5">
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+          <span>Add-ons & Extras</span>
+          <span class="text-[10px] font-normal text-slate-400">e.g. Extra Egg, Borhani</span>
+        </span>
+        <span class="text-[11px] text-slate-500 block">Optional toppings or sides customer can add with extra charge</span>
+      </div>
+      <button type="button" onclick="addAddon()" class="text-xs bg-white border border-slate-300 hover:border-brand hover:text-brand font-bold px-2.5 py-1 rounded-lg shadow-2xs transition shrink-0">
+        + Add Extra
+      </button>
+    </div>
+    <div id="add_list" class="space-y-2 pt-1"></div>
+  </div>
+
+  <div>
+    <label class="lbl font-semibold text-xs text-slate-700">Image URL</label>
+    <input id="fi" type="url" class="inp text-xs" placeholder="https://images.unsplash.com/..." value="${esc(i.image_url||'')}">
+  </div>
+  <div>
+    <label class="lbl font-semibold text-xs text-slate-700">Description</label>
+    <input id="fd" class="inp text-xs" placeholder="Short description or ingredients" value="${esc(i.description||'')}">
+  </div>
+  <label class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl cursor-pointer hover:bg-slate-100/60 transition">
+    <div class="min-w-0 pr-3">
+      <span class="font-semibold text-xs text-slate-800 block">Available for Ordering</span>
+      <span class="text-[11px] text-slate-500">Toggle off when this dish is sold out or unavailable</span>
+    </div>
+    <input id="fa" type="checkbox" ${i.available?'checked':''} class="w-4 h-4 rounded text-brand focus:ring-brand border-slate-300">
+  </label>
+  <div class="flex gap-2.5 pt-2">
+    <button type="button" onclick="closeM()" class="btn2 flex-1">Cancel</button>
+    <button type="submit" class="btn flex-1">${id?'Update Dish':'Save Dish'}</button>
+  </div></form>`);
+
+  renderVariantsList();
+  renderAddonsList();
+}
+
+function renderVariantsList(){
+  const el = $('var_list');
+  if(!el) return;
+  if(editingVariants.length === 0){
+    el.innerHTML = `<p class="text-[11px] text-slate-400 italic py-0.5">No portions/sizes added. Regular base price applies to this item.</p>`;
+    return;
+  }
+  el.innerHTML = editingVariants.map((v, idx) => `
+    <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+      <input type="text" required class="inp flex-1 text-xs font-medium py-1 px-2" placeholder="Portion (e.g. Half Plate)" value="${esc(v.name||'')}" oninput="editingVariants[${idx}].name=this.value">
+      <div class="flex items-center gap-1 w-28 shrink-0">
+        <span class="text-xs text-slate-400 font-bold">৳</span>
+        <input type="number" min="0" step="any" required class="inp text-xs font-bold py-1 px-2" placeholder="Price" value="${v.price ?? ''}" oninput="editingVariants[${idx}].price=+this.value">
+      </div>
+      <button type="button" onclick="removeVariant(${idx})" class="w-7 h-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center font-bold text-xs shrink-0 transition" title="Remove size">✕</button>
+    </div>
+  `).join('');
+}
+
+function addVariant(){
+  const baseP = +$('fp')?.value || 0;
+  editingVariants.push({ name: editingVariants.length === 0 ? 'Full Plate' : (editingVariants.length === 1 ? 'Half Plate' : ''), price: baseP });
+  renderVariantsList();
+}
+
+function removeVariant(idx){
+  editingVariants.splice(idx, 1);
+  renderVariantsList();
+}
+
+function syncDefaultVarPrice(v){
+  if(editingVariants.length === 1 && !editingVariants[0].price){
+    editingVariants[0].price = +v || 0;
+    renderVariantsList();
+  }
+}
+
+function renderAddonsList(){
+  const el = $('add_list');
+  if(!el) return;
+  if(editingAddons.length === 0){
+    el.innerHTML = `<p class="text-[11px] text-slate-400 italic py-0.5">No add-ons added. Click "+ Add Extra" to offer extra toppings, drinks, etc.</p>`;
+    return;
+  }
+  el.innerHTML = editingAddons.map((a, idx) => `
+    <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+      <input type="text" required class="inp flex-1 text-xs font-medium py-1 px-2" placeholder="Add-on (e.g. Extra Boiled Egg)" value="${esc(a.name||'')}" oninput="editingAddons[${idx}].name=this.value">
+      <div class="flex items-center gap-1 w-28 shrink-0">
+        <span class="text-xs text-slate-400 font-bold">+৳</span>
+        <input type="number" min="0" step="any" required class="inp text-xs font-bold py-1 px-2" placeholder="Price" value="${a.price ?? ''}" oninput="editingAddons[${idx}].price=+this.value">
+      </div>
+      <button type="button" onclick="removeAddon(${idx})" class="w-7 h-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center font-bold text-xs shrink-0 transition" title="Remove extra">✕</button>
+    </div>
+  `).join('');
+}
+
+function addAddon(){
+  editingAddons.push({ name: '', price: 0 });
+  renderAddonsList();
+}
+
+function removeAddon(idx){
+  editingAddons.splice(idx, 1);
+  renderAddonsList();
+}
+
+async function saveItem(e,id){
+  e.preventDefault();
+  const p=+$('fp').value,o=$('fo').value===''?null:+$('fo').value;
+  if(o!==null&&o>=p)return alert('Offer price must be lower than the price.');
+
+  const cleanVariants = editingVariants
+    .filter(v => v.name && v.name.trim())
+    .map(v => ({ name: v.name.trim(), price: +v.price || 0 }));
+
+  const cleanAddons = editingAddons
+    .filter(a => a.name && a.name.trim())
+    .map(a => ({ name: a.name.trim(), price: +a.price || 0 }));
+
+  const row={
+    name:$('fn').value.trim(),
+    category:$('fc').value.trim(),
+    price:p,
+    offer_price:o,
+    image_url:$('fi').value.trim()||null,
+    description:$('fd').value.trim()||null,
+    available:$('fa').checked,
+    variants: cleanVariants.length ? cleanVariants : null,
+    addons: cleanAddons.length ? cleanAddons : null
+  };
+  const {error}=id?await db.from('menu_items').update(row).eq('id',id):await db.from('menu_items').insert(row);
+  if(error)return alert(error.message);
+  closeM();toast('Saved');vMenu();return false;
+}
+async function tog(id,v){await db.from('menu_items').update({available:v}).eq('id',id);vMenu()}
+async function delItem(id){
+  const i = M.find(x => x.id === id);
+  if (!i) return;
+  const ok = await confirmDialog({
+    title: 'Delete Menu Item',
+    message: 'Are you sure you want to delete this dish?',
+    itemHtml: `
+      <div class="p-3 bg-slate-50 border border-slate-200/90 rounded-xl flex items-center gap-3">
+        ${i.image_url ? `<img src="${esc(i.image_url)}" class="w-12 h-12 rounded-lg object-cover bg-slate-200 shrink-0" onerror="this.onerror=null;this.replaceWith(document.createElement('div'))">` : `<div class="w-12 h-12 rounded-lg bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-sm shrink-0">${esc((i.name||'')[0])}</div>`}
+        <div class="min-w-0 flex-1">
+          <p class="font-bold text-slate-900 text-sm truncate">${esc(i.name)}</p>
+          <p class="text-xs text-slate-500 font-medium">${esc(i.category)} · <span class="font-bold text-slate-800">${tk(i.price)}</span></p>
+        </div>
+      </div>
+    `,
+    confirmText: 'Delete Item',
+    danger: true
+  });
+  if(ok){
+    await db.from('menu_items').delete().eq('id',id);
+    toast('Item deleted');
+    vMenu();
+  }
+}
+init({page:'menu',title:'Menu items',view:vMenu,plus:()=>openItem(0)});
+</script>
+</body>
+</html>

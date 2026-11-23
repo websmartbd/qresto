@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tables & QR · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="assets/tw.js"></script>
+<link rel="stylesheet" href="assets/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../demo-data.js"></script>
+<script src="../config.js"></script>
+</head>
+<body class="bg-neutral-100 text-ink text-[13px] font-sans">
+<main id="main" class="p-3 pb-8 lg:p-6"></main>
+<script src="assets/app.js"></script>
+<script>
+let T=[];
+/* ---------- tables + QR ---------- */
+const qurl=id=>new URL('../menu.html?t='+id,location.href).href;
+async function vTables(){
+  T=(await db.from('tables').select().order('id')).data||[];
+  T.sort((a,b)=>a.number.localeCompare(b.number,undefined,{numeric:true}));
+  $('main').innerHTML=head('Tables & QR',(T.length?'<button onclick="printQR(T.map(t=>t.id))" class="btn2">Print all QR codes</button>':'')+'<button onclick="openTables()" aria-label="Add tables" class="btn !px-0 w-9 h-9 grid place-items-center shrink-0"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>')+`
+  ${T.length?`<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">${T.map(t=>`<div class="box p-3 text-center min-w-0"><p class="font-semibold truncate">Table ${esc(t.number)}</p><div id="q${t.id}" class="flex justify-center my-2.5"></div>
+   <div class="flex items-center justify-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
+     <a href="${qurl(t.id)}" target="_blank" title="Open customer menu" aria-label="Open menu" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition active:scale-95 shadow-2xs">
+       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+     </a>
+     <button onclick="printQR([${t.id}])" title="Print QR code" aria-label="Print QR" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition active:scale-95 shadow-2xs">
+       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+     </button>
+     <button onclick="delTable(${t.id})" title="Delete table" aria-label="Delete table" class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 flex items-center justify-center transition active:scale-95 shadow-2xs">
+       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+     </button>
+   </div></div>`).join('')}</div>`:empty('No tables yet','Press the + button to add your tables.')}`;
+  T.forEach(t=>new QRCode($('q'+t.id),{text:qurl(t.id),width:110,height:110}));
+}
+function openTables(){
+  modal(`<div class="p-5 space-y-4"><h3>Add Tables</h3>
+  <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+    <div class="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+      <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      <span>Batch Create Tables</span>
+    </div>
+    <p class="text-xs text-slate-500">Automatically generate numbered tables from 1 to N.</p>
+    <div class="flex gap-2 pt-1">
+      <input id="tc" type="number" min="1" max="200" class="inp flex-1 font-bold" placeholder="e.g. 10">
+      <button onclick="mkTables()" class="btn shrink-0">Create 1 to N</button>
+    </div>
+  </div>
+
+  <div class="relative flex py-1 items-center">
+    <div class="flex-grow border-t border-slate-200"></div>
+    <span class="flex-shrink mx-3 text-xs text-slate-400 font-semibold">OR</span>
+    <div class="flex-grow border-t border-slate-200"></div>
+  </div>
+
+  <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+    <div class="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+      <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+      <span>Single Custom Table</span>
+    </div>
+    <p class="text-xs text-slate-500">Add a specific name or VIP section table.</p>
+    <div class="flex gap-2 pt-1">
+      <input id="tn1" class="inp flex-1" placeholder="e.g. VIP-1, Rooftop-2">
+      <button onclick="addTable()" class="btn2 shrink-0">Add Table</button>
+    </div>
+  </div></div>`);
+}
+async function mkTables(){
+  const n=+$('tc').value;if(!n||n<1)return;
+  const {error}=await db.from('tables').upsert(Array.from({length:n},(_,i)=>({number:String(i+1)})),{onConflict:'number',ignoreDuplicates:true});
+  if(error)return alert(error.message);
+  closeM();toast('Tables created');vTables();
+}
+async function addTable(){const v=$('tn1').value.trim();if(!v)return;const {error}=await db.from('tables').insert({number:v});if(error)return alert('This table already exists.');closeM();toast('Table added');vTables()}
+async function delTable(id){
+  const t = T.find(x => x.id === id);
+  const num = t ? t.number : id;
+  const ok = await confirmDialog({
+    title: 'Delete Table',
+    message: 'Its printed QR code will stop working immediately.',
+    itemHtml: `
+      <div class="p-3.5 bg-slate-50 border border-slate-200/90 rounded-xl flex items-center justify-center gap-2.5">
+        <span class="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">#</span>
+        <span class="font-bold text-slate-900 text-base">Table ${esc(num)}</span>
+      </div>
+    `,
+    confirmText: 'Delete Table',
+    danger: true
+  });
+  if(ok){
+    await db.from('tables').delete().eq('id',id);
+    toast('Table deleted');
+    vTables();
+  }
+}
+function printQR(ids){
+  $('inv').innerHTML=`<div class="qs">${ids.map(id=>{const t=T.find(x=>x.id===id);return `<div class="qc"><b style="font-size:16px">${esc(R.name)}</b><br><span style="font-size:20px;font-weight:800">Table ${esc(t.number)}</span><img src="${$('q'+id).querySelector('canvas').toDataURL()}"><div style="font-size:12px">Scan to see menu and order</div></div>`}).join('')}</div>`;
+  setTimeout(()=>print(),150);
+}
+init({page:'tables',title:'Tables & QR',view:vTables});
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+/* ==========================================================================
+   Shared Base & Component Styles · Bangla QR Code Restaurant Web App
+   Palette: Warm Stone Neutral (#fbfaf8) · Accent: Configurable Brand Preset
+   Typography: DM Sans (Latin) + Hind Siliguri (Bengali) + JetBrains Mono (Numbers)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..600;1,9..40,400..600&family=Hind+Siliguri:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --brand: #15803d;
+  --brand-hover: #166534;
+  --brand-light: rgba(21, 128, 61, 0.08);
+  --surface-bg: #fbfaf8;
+  --surface-card: #ffffff;
+  --surface-border: #ede9e2;
+  --text-primary: #1c1a18;
+  --text-secondary: #5e554a;
+  --text-muted: #8a847a;
+}
+
+body {
+  font-family: "DM Sans", "Hind Siliguri", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text-primary);
+  background-color: var(--surface-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Numeric tabular styling */
+.font-mono, [data-mono], .tabular-nums {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Form Inputs */
+.inp {
+  width: 100%;
+  border: 1px solid var(--surface-border, #ede9e2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 15px;
+  line-height: 1.4;
+  background: #ffffff;
+  color: var(--text-primary, #1c1a18);
+  font-family: inherit;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.inp:focus {
+  outline: none;
+  border-color: var(--brand, #15803d);
+  box-shadow: 0 0 0 1px var(--brand, #15803d);
+}
+
+/* Primary Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--brand, #15803d) !important;
+  color: #ffffff !important;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  border: 0;
+  cursor: pointer;
+  min-height: 38px;
+  transition: background-color 140ms ease, transform 140ms ease;
+}
+.btn:hover {
+  background: var(--brand-hover, #166534) !important;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary Button */
+.btn2 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--surface-border, #ede9e2);
+  background: #ffffff;
+  color: var(--text-primary, #1c1a18);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  min-height: 38px;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.btn2:hover {
+  background: #f7f5f0;
+  border-color: #ded8ce;
+}
+.btn2:active {
+  transform: scale(0.98);
+}
+
+/* Small Button Modifier */
+.sm {
+  padding: 4px 10px !important;
+  font-size: 12.5px !important;
+  min-height: 30px !important;
+  border-radius: 6px !important;
+}
+
+/* Card Container */
+.box {
+  background: #ffffff;
+  border: 1px solid var(--surface-border, #ede9e2);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(28, 26, 24, 0.03);
+}
+
+/* Field Label */
+.lbl {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary, #5e554a);
+  margin-bottom: 4px;
+}
+
+/* List Row */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f4f1eb;
+}
+.row:last-child {
+  border-bottom: 0;
+}
+
+/* Brand Link Utility */
+.lk {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--brand, #15803d) !important;
+}
+.lk:hover {
+  text-decoration: underline;
+}
+
+/* Brand Class Overrides */
+.bg-brand { background-color: var(--brand, #15803d) !important; }
+.text-brand { color: var(--brand, #15803d) !important; }
+.border-brand { border-color: var(--brand, #15803d) !important; }
+.hover\:bg-brand:hover { background-color: var(--brand-hover, #166534) !important; border-color: var(--brand-hover, #166534) !important; color: #ffffff !important; }
+.hover\:bg-brand-hover:hover { background-color: var(--brand-hover, #166534) !important; }
+.hover\:text-white:hover { color: #ffffff !important; }
+
+/* Thermal Receipt, KOT & Print Engine */
+#inv { display: none; }
+.rc {
+  max-width: 76mm;
+  width: 100%;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hind Siliguri", "Kalpurush", Roboto, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #000;
+  word-break: break-word;
+}
+.rc.rc-58 {
+  max-width: 52mm;
+  font-size: 10.5px;
+}
+.rc table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rc td {
+  padding: 2px 0;
+  vertical-align: top;
+}
+.rc hr {
+  border: 0;
+  border-top: 1px dashed #000;
+  margin: 5px 0;
+}
+.qs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6mm;
+  font-family: sans-serif;
+}
+.qc {
+  border: 1px solid #1c1a18;
+  padding: 5mm;
+  text-align: center;
+  break-inside: avoid;
+  border-radius: 8px;
+}
+.qc img {
+  margin: 3mm auto;
+  width: 42mm;
+  height: 42mm;
+}
+
+@media print {
+  body > *:not(#inv) { display: none !important; }
+  #inv { display: block !important; }
+  @page { margin: 2mm 3mm; size: auto; }
+}

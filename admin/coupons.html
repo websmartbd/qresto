@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coupons · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="assets/tw.js"></script>
+<link rel="stylesheet" href="assets/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../demo-data.js"></script>
+<script src="../config.js"></script>
+</head>
+<body class="bg-neutral-100 text-ink text-[13px] font-sans">
+<main id="main" class="p-3 pb-8 lg:p-6"></main>
+<script src="assets/app.js"></script>
+<script>
+let C=[];
+/* ---------- coupons ---------- */
+async function vCoupons(){
+  C=(await db.from('coupons').select().order('id')).data||[];
+  $('main').innerHTML=head('Coupons','<button onclick="openCoupon()" class="btn">Add coupon</button>',0,1)+`<div class="box">${C.map(c=>`<div class="row"><div class="flex-1 min-w-0"><p class="font-bold tracking-wide">${esc(c.code)}</p><p class="text-xs text-slate-500">${c.type==='percent'?c.value+'% off':tk(c.value)+' off'}${+c.min_order?' · min order '+tk(c.min_order):''}</p></div>${sw(c.active,`togC(${c.id},${!c.active})`)}<button onclick="delC(${c.id})" class="text-sm text-red-600">Delete</button></div>`).join('')||empty('No coupons yet','Create a code, then enter it on the bill.')}</div>`;
+}
+function openCoupon(){
+  modal(`<form onsubmit="return saveC(event)" class="p-5 space-y-4"><h3>Create Discount Coupon</h3>
+  <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2.5">
+    <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span>Customers can apply this promo code during checkout on their digital menu.</span>
+  </div>
+  <div>
+    <label class="lbl font-semibold text-xs text-slate-700">Promo Code</label>
+    <input id="kc" required class="inp uppercase tracking-wider font-bold" placeholder="e.g. WELCOME10, FRIDAY20">
+  </div>
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="lbl font-semibold text-xs text-slate-700">Discount Type</label>
+      <select id="kt" class="inp font-medium">
+        <option value="percent">Percentage (%)</option>
+        <option value="flat">Flat Amount (৳)</option>
+      </select>
+    </div>
+    <div>
+      <label class="lbl font-semibold text-xs text-slate-700">Discount Value</label>
+      <input id="kv" type="number" min="1" step="any" required class="inp font-bold" placeholder="e.g. 10 or 50">
+    </div>
+  </div>
+  <div>
+    <label class="lbl font-semibold text-xs text-slate-700">Minimum Order Requirement (৳)</label>
+    <input id="km" type="number" min="0" value="0" class="inp" placeholder="0 for no minimum">
+    <span class="text-[11px] text-slate-400 mt-1 block">Set to 0 if no minimum spending is required.</span>
+  </div>
+  <div class="flex gap-2.5 pt-2">
+    <button type="button" onclick="closeM()" class="btn2 flex-1">Cancel</button>
+    <button type="submit" class="btn flex-1">Save Coupon</button>
+  </div></form>`);
+}
+async function saveC(e){
+  e.preventDefault();
+  if($('kt').value==='percent'&&+$('kv').value>100)return alert('Percent cannot be more than 100.');
+  const code=$('kc').value.trim().toUpperCase();
+  if(C.some(c=>c.code===code))return alert('This code already exists.');
+  const {error}=await db.from('coupons').insert({code,type:$('kt').value,value:+$('kv').value,min_order:+$('km').value||0,active:true});
+  if(error)return alert(error.message);
+  closeM();toast('Coupon saved');vCoupons();return false;
+}
+async function togC(id,v){await db.from('coupons').update({active:v}).eq('id',id);vCoupons()}
+async function delC(id){
+  const c = C.find(x => x.id === id);
+  const code = c ? c.code : '';
+  const discountStr = c ? (c.type === 'percent' ? c.value + '% off' : tk(c.value) + ' off') : '';
+  const ok = await confirmDialog({
+    title: 'Delete Coupon',
+    message: 'Customers will no longer be able to use this promo code.',
+    itemHtml: `
+      <div class="p-3.5 bg-slate-50 border border-slate-200/90 rounded-xl flex items-center justify-between">
+        <div class="min-w-0 pr-2">
+          <span class="font-mono font-bold text-slate-900 text-sm tracking-wider uppercase block truncate">${esc(code)}</span>
+          <p class="text-xs text-slate-500 font-medium">${discountStr}</p>
+        </div>
+        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${c && c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'} shrink-0">${c && c.active ? 'Active' : 'Inactive'}</span>
+      </div>
+    `,
+    confirmText: 'Delete Coupon',
+    danger: true
+  });
+  if(ok){
+    await db.from('coupons').delete().eq('id',id);
+    toast('Coupon deleted');
+    vCoupons();
+  }
+}
+init({page:'coupons',title:'Coupons',view:vCoupons,plus:openCoupon});
+</script>
+</body>
+</html>

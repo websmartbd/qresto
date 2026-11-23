@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#fbfaf8">
+<title>Welcome - Delicious Food & Dine-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..600;1,9..40,400..600&family=Hind+Siliguri:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['"DM Sans"', '"Hind Siliguri"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['"JetBrains Mono"', '"Hind Siliguri"', '"Noto Sans Bengali"', 'ui-monospace', 'monospace']
+      },
+      fontSize: {
+        xs: ['12px', '16px'],
+        sm: ['13.5px', '20px'],
+        base: ['15px', '22px'],
+        lg: ['17px', '24px'],
+        xl: ['20px', '28px'],
+        '2xl': ['24px', '32px'],
+        '3xl': ['30px', '38px'],
+        '4xl': ['36px', '44px']
+      },
+      colors: {
+        ink: {
+          DEFAULT: '#1c1a18',
+          secondary: '#5e554a',
+          muted: '#8a847a'
+        },
+        stone: {
+          50: '#fbfaf8',
+          100: '#f5f2eb',
+          200: '#ede9e2',
+          300: '#ded8ce',
+          400: '#b8b0a2',
+          500: '#8a847a',
+          600: '#5e554a',
+          700: '#423c34',
+          800: '#2c2722',
+          900: '#1c1a18'
+        },
+        brand: 'var(--brand, #15803d)',
+        'brand-hover': 'var(--brand-hover, #166534)',
+        'brand-light': 'var(--brand-light, rgba(21, 128, 61, 0.08))'
+      },
+      borderRadius: {
+        DEFAULT: '8px',
+        sm: '6px',
+        md: '8px',
+        lg: '10px',
+        xl: '12px',
+        '2xl': '14px',
+        '3xl': '16px'
+      }
+    }
+  }
+};
+</script>
+<style>
+:root {
+  --brand: #15803d;
+  --brand-hover: #166534;
+  --brand-light: rgba(21, 128, 61, 0.08);
+  --surface-bg: #fbfaf8;
+  --surface-card: #ffffff;
+  --surface-border: #ede9e2;
+  --text-primary: #1c1a18;
+  --text-secondary: #5e554a;
+  --text-muted: #8a847a;
+}
+html, body {
+  background-color: var(--surface-bg, #fbfaf8);
+  color: var(--text-primary);
+  font-family: "DM Sans", "Hind Siliguri", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.font-mono, [data-mono], .tabular-nums {
+  font-family: "JetBrains Mono", "Hind Siliguri", "Noto Sans Bengali", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.bg-brand { background-color: var(--brand, #15803d) !important; }
+button.bg-brand:hover, a.bg-brand:hover { background-color: var(--brand-hover, #166534) !important; }
+.text-brand { color: var(--brand, #15803d) !important; }
+.border-brand { border-color: var(--brand, #15803d) !important; }
+.hover\:bg-brand:hover { background-color: var(--brand-hover, #166534) !important; border-color: var(--brand-hover, #166534) !important; color: #ffffff !important; }
+.hover\:bg-brand-hover:hover { background-color: var(--brand-hover, #166534) !important; }
+.hover\:text-white:hover { color: #ffffff !important; }
+.hover\:text-brand:hover { color: var(--brand, #15803d) !important; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.snap-x-mandatory { scroll-snap-type: x mandatory; }
+.snap-start { scroll-snap-align: start; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="demo-data.js"></script>
+<script src="config.js"></script>
+</head>
+<body class="selection:bg-brand selection:text-white bg-stone-50 min-h-screen flex flex-col">
+
+<!-- Top Announcement Bar / Dining Note -->
+<div class="bg-stone-100 border-b border-stone-200/80 text-stone-600 text-xs py-2 px-4">
+  <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2 truncate">
+      <span class="inline-flex w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+      <span class="truncate">Dine-in Open Today · Table QR ordering available at every table</span>
+    </div>
+    <div class="hidden sm:flex items-center gap-4 shrink-0 font-mono text-stone-500">
+      <span id="top_hours">11:00 AM - 11:00 PM</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main Desktop & Mobile Responsive Header -->
+<header class="sticky top-0 z-40 bg-stone-50/95 backdrop-blur-xs border-b border-stone-200/90 transition-colors">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-4">
+    <!-- Logo & Restaurant Title -->
+    <a href="#" class="flex items-center gap-3 min-w-0 group">
+      <div id="nav_logo" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand text-white flex items-center justify-center font-bold text-sm sm:text-base shrink-0 shadow-2xs transition-transform group-hover:scale-102">
+        R
+      </div>
+      <div class="min-w-0">
+        <span id="nav_name" class="font-bold text-base sm:text-lg text-ink leading-tight truncate block">Demo Restaurant</span>
+        <span id="nav_tagline" class="text-xs text-stone-500 font-normal truncate block">Authentic Cuisine & Pleasant Ambiance</span>
+      </div>
+    </a>
+
+    <!-- Desktop Navigation Links (Showcase Anchors Only - No Order / Menu Links) -->
+    <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-stone-600">
+      <a href="#menu" class="hover:text-ink transition py-1">Featured Dishes</a>
+      <a href="#experience" class="hover:text-ink transition py-1">QR Table Dining</a>
+      <a href="#about" class="hover:text-ink transition py-1">Our Story</a>
+      <a href="#contact" class="hover:text-ink transition py-1">Visit & Hours</a>
+    </nav>
+
+    <!-- Header Action: Quick Hotline & Status (No Ordering Link) -->
+    <div class="flex items-center gap-3 shrink-0">
+      <a id="header_phone_btn" href="tel:" class="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-lg border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-700 text-xs sm:text-sm font-medium transition shadow-2xs">
+        <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+        <span id="header_phone_text" class="font-mono hidden sm:inline">Call Hotline</span>
+        <span class="sm:hidden font-mono">Call</span>
+      </a>
+      <a href="#menu" class="inline-flex items-center justify-center px-3.5 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-medium transition shadow-2xs">
+        <span>Browse Menu</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="flex-1">
+
+  <!-- Hero Section: Rich Split Presentation on Desktop, Fluid on Mobile -->
+  <section class="border-b border-stone-200/80 bg-gradient-to-b from-stone-50 to-white/60 py-10 sm:py-16 lg:py-20">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        
+        <!-- Left: Editorial & Narrative -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-stone-100 border border-stone-200/80 text-stone-700 text-xs font-mono font-medium">
+            <span class="w-2 h-2 rounded-full bg-brand"></span>
+            <span>Table QR Dining Experience</span>
+          </div>
+
+          <div class="space-y-3">
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-ink tracking-tight leading-tight">
+              Authentic Culinary Craft, <br class="hidden sm:inline">Served with Heart.
+            </h1>
+            <p id="hero_tagline" class="text-base sm:text-lg text-stone-600 leading-relaxed max-w-2xl">
+              Experience chef-crafted traditional recipes, freshly prepared with quality ingredients. Scan your table QR code when you dine in for instant table service.
+            </p>
+          </div>
+
+          <!-- Feature Chips -->
+          <div class="flex flex-wrap gap-2.5 pt-1 text-xs sm:text-sm text-stone-600">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-stone-200 shadow-2xs">
+              <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              100% Halal Certified
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-stone-200 shadow-2xs">
+              <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Fresh Daily Preparation
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-stone-200 shadow-2xs">
+              <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Contactless Table Ordering
+            </span>
+          </div>
+
+          <!-- Anchor CTA Group -->
+          <div class="flex items-center gap-3 pt-2">
+            <a href="#menu" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium transition shadow-xs active:scale-98">
+              <span>Explore Featured Dishes</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </a>
+            <a href="#experience" class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-sm font-medium border border-stone-200 shadow-2xs transition active:scale-98">
+              How Dining Works
+            </a>
+          </div>
+        </div>
+
+        <!-- Right: Atmospheric Hero Card -->
+        <div class="lg:col-span-5">
+          <div class="relative bg-white rounded-2xl p-2.5 border border-stone-200/90 shadow-xs">
+            <div class="relative h-64 sm:h-80 w-full rounded-xl overflow-hidden bg-stone-100">
+              <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80" alt="Restaurant Interior & Dining" class="w-full h-full object-cover">
+              <div class="absolute inset-0 bg-gradient-to-t from-stone-900/60 via-transparent to-transparent"></div>
+              
+              <!-- Floating Rating Pill -->
+              <div class="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-ink shadow-2xs border border-white/70 flex items-center gap-1.5">
+                <span class="text-amber-500">★</span>
+                <span>4.9 · 1.2k Reviews</span>
+              </div>
+
+              <!-- Floating Hours Pill -->
+              <div class="absolute bottom-3 left-3 right-3 text-white flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-mono text-stone-300">OPEN DAILY</p>
+                  <p id="hero_hours_display" class="text-sm font-bold mt-0.5">11:00 AM - 11:00 PM</p>
+                </div>
+                <div class="px-2.5 py-1 rounded-md bg-stone-900/70 backdrop-blur-xs text-xs font-mono border border-white/20">
+                  Dine-in &amp; Takeaway
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Hospitality Metrics Docket Bar -->
+  <section class="border-b border-stone-200/80 bg-white py-6">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        <div class="border-l-2 border-brand/60 pl-3.5 py-1">
+          <p class="text-xs text-stone-500 font-medium">Average Prep Time</p>
+          <p id="stat_prep" class="text-lg sm:text-xl font-bold font-mono text-ink mt-0.5">15-20 min</p>
+          <p class="text-xs text-stone-400">Freshly made to order</p>
+        </div>
+        <div class="border-l-2 border-brand/60 pl-3.5 py-1">
+          <p class="text-xs text-stone-500 font-medium">Menu Catalog</p>
+          <p id="stat_items" class="text-lg sm:text-xl font-bold font-mono text-ink mt-0.5">20+ Items</p>
+          <p class="text-xs text-stone-400">Signature Bangladeshi dishes</p>
+        </div>
+        <div class="border-l-2 border-brand/60 pl-3.5 py-1">
+          <p class="text-xs text-stone-500 font-medium">Ordering Method</p>
+          <p class="text-lg sm:text-xl font-bold font-mono text-ink mt-0.5">Table QR</p>
+          <p class="text-xs text-stone-400">Contactless table service</p>
+        </div>
+        <div class="border-l-2 border-brand/60 pl-3.5 py-1">
+          <p class="text-xs text-stone-500 font-medium">Halal Standard</p>
+          <p class="text-lg sm:text-xl font-bold font-mono text-ink mt-0.5">100% Halal</p>
+          <p class="text-xs text-stone-400">Certified hygienic kitchen</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Menu Showcase (No Order / Menu Links) -->
+  <section id="menu" class="py-12 sm:py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div class="space-y-1">
+        <div class="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-brand">
+          <span>OUR SPECIALTIES</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-ink">Featured Dishes &amp; Menu</h2>
+        <p class="text-sm text-stone-500 max-w-xl">
+          Browse our freshly prepared specialties. Prices and item details are shown below for your discovery.
+        </p>
+      </div>
+      <div class="text-xs font-mono text-stone-500 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200/80 shrink-0">
+        Order via Table QR inside restaurant
+      </div>
+    </div>
+
+    <!-- Category Filters Bar -->
+    <div class="border-b border-stone-200/90 pb-4">
+      <div id="cats_bar" class="flex items-center gap-2 overflow-x-auto no-scrollbar snap-x-mandatory">
+        <div class="h-9 w-20 bg-stone-200 rounded-lg animate-pulse shrink-0"></div>
+        <div class="h-9 w-24 bg-stone-200 rounded-lg animate-pulse shrink-0"></div>
+        <div class="h-9 w-24 bg-stone-200 rounded-lg animate-pulse shrink-0"></div>
+      </div>
+    </div>
+
+    <!-- Menu Items Showcase Grid (Responsive 3 cols on desktop, 2 on tablet, 1 on mobile) -->
+    <div id="items_grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+      <!-- Loading Skeleton -->
+      <div class="bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-2xs animate-pulse">
+        <div class="h-44 bg-stone-200"></div>
+        <div class="p-4 space-y-2">
+          <div class="h-4 bg-stone-200 rounded w-2/3"></div>
+          <div class="h-3 bg-stone-200 rounded w-full"></div>
+          <div class="h-4 bg-stone-200 rounded w-16 pt-2"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How QR Dining Works (Detailed 3-step walk-through) -->
+  <section id="experience" class="bg-white border-y border-stone-200/80 py-12 sm:py-16">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <div class="text-center max-w-2xl mx-auto space-y-2">
+        <span class="text-xs font-mono font-medium text-brand">HOW IT WORKS</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-ink">Effortless Dine-in with Table QR</h2>
+        <p class="text-sm text-stone-500">
+          When you dine with us, everything is designed to be smooth and convenient right from your table.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pt-4">
+        <!-- Step 1 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200/80 flex flex-col justify-between shadow-2xs">
+          <div class="space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-brand text-white font-mono font-bold text-base flex items-center justify-center shadow-2xs">
+              01
+            </div>
+            <h3 class="text-base font-bold text-ink">Take a Seat &amp; Scan</h3>
+            <p class="text-sm text-stone-600 leading-relaxed">
+              Find your table in the dining room. Each table has an individual QR stand. Simply open your phone camera and scan to access your table docket instantly.
+            </p>
+          </div>
+          <div class="pt-4 text-xs font-mono text-stone-400">
+            No app download or sign-up needed
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200/80 flex flex-col justify-between shadow-2xs">
+          <div class="space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-brand text-white font-mono font-bold text-base flex items-center justify-center shadow-2xs">
+              02
+            </div>
+            <h3 class="text-base font-bold text-ink">Select &amp; Customise</h3>
+            <p class="text-sm text-stone-600 leading-relaxed">
+              Browse dishes with complete photos, prices, portions, and add-ons. Add custom kitchen instructions (less spicy, no onions, extra sauce) and submit directly to the chef.
+            </p>
+          </div>
+          <div class="pt-4 text-xs font-mono text-stone-400">
+            Real-time kitchen order ticket (KOT)
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="bg-stone-50 rounded-2xl p-6 border border-stone-200/80 flex flex-col justify-between shadow-2xs">
+          <div class="space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-brand text-white font-mono font-bold text-base flex items-center justify-center shadow-2xs">
+              03
+            </div>
+            <h3 class="text-base font-bold text-ink">Enjoy Fresh Table Service</h3>
+            <p class="text-sm text-stone-600 leading-relaxed">
+              Watch your order status update from "Cooking" to "Served". Need assistance? Tap "Call Waiter" from your phone screen anytime during your meal.
+            </p>
+          </div>
+          <div class="pt-4 text-xs font-mono text-stone-400">
+            Pay at table or counter when finished
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Us & Culinary Philosophy -->
+  <section id="about" class="py-12 sm:py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <div class="lg:col-span-6 space-y-4">
+        <span class="text-xs font-mono font-medium text-brand">OUR COMMITMENT</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-ink leading-tight">Fresh Ingredients, Authentic Flavors, Clean Kitchen.</h2>
+        <p id="about_desc" class="text-sm sm:text-base text-stone-600 leading-relaxed">
+          We take pride in cooking authentic traditional recipes with hand-picked spices, fresh cuts of meat, and aromatic grains. Every dish is cooked fresh to order in a strictly inspected, hygienic kitchen environment.
+        </p>
+        <div class="pt-2 grid grid-cols-2 gap-4 text-xs sm:text-sm text-stone-700 font-medium">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-brand"></span>
+            <span>Pure Mustard Oil &amp; Ghee</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-brand"></span>
+            <span>Family-friendly Dining</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-brand"></span>
+            <span>Zero Preservatives</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-brand"></span>
+            <span>Air-Conditioned Ambiance</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-6">
+        <div class="bg-white p-2.5 rounded-2xl border border-stone-200/90 shadow-2xs">
+          <div class="h-64 sm:h-80 rounded-xl overflow-hidden bg-stone-100">
+            <img src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1000&q=80" alt="Fresh Culinary Preparation" class="w-full h-full object-cover">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Visit, Contact & Operating Hours Section -->
+  <section id="contact" class="bg-stone-100/70 border-t border-stone-200/80 py-12 sm:py-16">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <div class="space-y-1">
+        <span class="text-xs font-mono font-medium text-brand">FIND &amp; CONNECT</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-ink">Visit Us or Get in Touch</h2>
+        <p class="text-sm text-stone-500">We welcome you and your family to dine in with us today.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Address Card -->
+        <div class="bg-white rounded-2xl p-6 border border-stone-200/90 space-y-3 shadow-2xs">
+          <div class="w-9 h-9 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center">
+            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div>
+            <h4 class="font-bold text-ink text-sm sm:text-base">Location &amp; Address</h4>
+            <p id="info_address" class="text-sm text-stone-600 mt-1 leading-relaxed">-</p>
+          </div>
+        </div>
+
+        <!-- Phone Card -->
+        <div class="bg-white rounded-2xl p-6 border border-stone-200/90 space-y-3 shadow-2xs">
+          <div class="w-9 h-9 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center">
+            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          </div>
+          <div>
+            <h4 class="font-bold text-ink text-sm sm:text-base">Reservations &amp; Hotline</h4>
+            <p class="mt-1">
+              <a id="info_phone_link" href="tel:" class="text-sm font-mono font-semibold text-brand hover:underline">
+                <span id="info_phone">-</span>
+              </a>
+            </p>
+            <p class="text-xs text-stone-400 mt-0.5">Call for party reservations &amp; inquiries</p>
+          </div>
+        </div>
+
+        <!-- Hours Card -->
+        <div class="bg-white rounded-2xl p-6 border border-stone-200/90 space-y-3 shadow-2xs">
+          <div class="w-9 h-9 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center">
+            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div>
+            <h4 class="font-bold text-ink text-sm sm:text-base">Dine-in Hours</h4>
+            <p id="info_hours" class="text-sm font-mono text-stone-600 mt-1">-</p>
+            <p class="text-xs text-stone-400 mt-0.5">Kitchen accepts orders until 30 min before closing</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Full-width Responsive Footer -->
+<footer class="bg-white border-t border-stone-200/90 py-8 text-xs text-stone-500">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-2.5">
+      <div class="w-6 h-6 rounded-md bg-brand text-white flex items-center justify-center font-bold text-xs shrink-0" id="ft_logo">R</div>
+      <span class="font-medium text-ink" id="ft_name">Demo Restaurant</span>
+      <span class="text-stone-300">·</span>
+      <span>QR Code Dine-in System</span>
+    </div>
+    <div class="text-center sm:text-right text-stone-400">
+      <span>Dine-in ordering is conducted via in-restaurant Table QR codes.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+let R = {}, items = [], cats = ['All'], curCat = 'All';
+const $ = id => document.getElementById(id),
+  esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
+  tk = n => (R.currency || '৳') + Number(n || 0).toLocaleString('en-IN');
+
+function darken(hex, pct){
+  try {
+    let c = String(hex||'').replace('#','');
+    if(c.length === 3) c = c.split('').map(x=>x+x).join('');
+    const num = parseInt(c, 16);
+    let r = Math.max(0, (num >> 16) - Math.round(255 * (pct/100)));
+    let g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(255 * (pct/100)));
+    let b = Math.max(0, (num & 0x0000FF) - Math.round(255 * (pct/100)));
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  } catch(e){ return hex; }
+}
+
+function applyTheme(hex){
+  if(!hex) hex = '#15803d';
+  document.documentElement.style.setProperty('--brand', hex);
+  document.documentElement.style.setProperty('--brand-hover', darken(hex, 12));
+  document.documentElement.style.setProperty('--brand-light', hex + '14');
+}
+
+function setCat(c){
+  curCat = c;
+  renderCategories();
+  renderFeaturedItems();
+}
+
+function renderCategories(){
+  $('cats_bar').innerHTML = cats.map(c => `
+    <button onclick="setCat('${esc(c)}')" class="shrink-0 snap-start px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition cursor-pointer min-h-[38px] ${c === curCat ? 'bg-brand text-white shadow-2xs' : 'bg-white text-stone-600 border border-stone-200/90 hover:bg-stone-50'}">
+      ${esc(c)}
+    </button>
+  `).join('');
+}
+
+function renderFeaturedItems(){
+  const show = items.filter(i => curCat === 'All' || i.category === curCat);
+  if(!show.length){
+    $('items_grid').innerHTML = '<div class="col-span-full py-12 text-center text-stone-400 text-sm">No items found in this category.</div>';
+    return;
+  }
+  $('items_grid').innerHTML = show.map(i => {
+    const isOffer = i.offer_price != null && +i.offer_price < +i.price;
+    const finalPrice = isOffer ? +i.offer_price : +i.price;
+    return `
+      <div class="bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-2xs hover:border-stone-300 transition flex flex-col group">
+        <!-- Dish Image (16:10 aspect ratio) -->
+        <div class="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden shrink-0">
+          ${i.image_url ? `
+            <img src="${esc(i.image_url)}" alt="${esc(i.name)}" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103" onerror="this.parentElement.style.display='none'">
+          ` : `
+            <div class="w-full h-full flex items-center justify-center text-stone-300">
+              <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            </div>
+          `}
+          ${isOffer ? `
+            <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[11px] font-mono font-bold shadow-2xs">
+              Offer
+            </div>
+          ` : ''}
+          ${i.category ? `
+            <div class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-stone-900/70 backdrop-blur-xs text-white text-[11px] font-mono">
+              ${esc(i.category)}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Dish Content (Name, Description, Monospace Price - NO ORDER BUTTON) -->
+        <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+          <div>
+            <h4 class="font-bold text-base sm:text-lg text-ink leading-snug group-hover:text-brand transition-colors">${esc(i.name)}</h4>
+            ${i.description ? `<p class="text-xs sm:text-sm text-stone-500 line-clamp-2 mt-1 leading-relaxed">${esc(i.description)}</p>` : ''}
+          </div>
+          
+          <div class="pt-3 border-t border-stone-100 flex items-center justify-between">
+            <div class="font-mono tabular-nums">
+              ${isOffer ? `
+                <s class="text-xs text-stone-400 mr-1.5">${tk(i.price)}</s>
+                <span class="text-sm sm:text-base font-bold text-brand">${tk(finalPrice)}</span>
+              ` : `
+                <span class="text-sm sm:text-base font-bold text-ink">${tk(finalPrice)}</span>
+              `}
+            </div>
+            <span class="text-xs text-stone-400 font-mono">Table QR</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function init(){
+  const [r, m] = await Promise.all([
+    db.from('restaurant').select().eq('id', 1).single(),
+    db.from('menu_items').select().eq('available', true).order('category').order('name')
+  ]);
+  R = r.data || {};
+  items = m.data || [];
+
+  const themeHex = R.color || '#15803d';
+  applyTheme(themeHex);
+  document.title = (R.name || 'Restaurant') + ' - Delicious Food & Dine-in';
+
+  // Info binding
+  const name = R.name || 'Restaurant';
+  $('nav_name').textContent = name;
+  $('nav_logo').textContent = name[0] || 'R';
+  if(R.tagline) {
+    $('nav_tagline').textContent = R.tagline;
+    $('hero_tagline').textContent = R.tagline;
+  }
+  if(R.hours) {
+    $('top_hours').textContent = R.hours;
+    $('hero_hours_display').textContent = R.hours;
+    $('info_hours').textContent = R.hours;
+  }
+  if(R.prep_time) $('stat_prep').textContent = R.prep_time;
+  $('stat_items').textContent = items.length + '+ Items';
+  $('info_address').textContent = R.address || 'Dining Room Available';
+  
+  if(R.phone) {
+    $('info_phone').textContent = R.phone;
+    $('info_phone_link').href = 'tel:' + R.phone.replace(/[^0-9+]/g, '');
+    $('header_phone_btn').href = 'tel:' + R.phone.replace(/[^0-9+]/g, '');
+    $('header_phone_text').textContent = R.phone;
+  }
+
+  $('ft_name').textContent = name;
+  $('ft_logo').textContent = name[0] || 'R';
+
+  // Categories & Items
+  cats = ['All', ...new Set(items.map(i => i.category))];
+  renderCategories();
+  renderFeaturedItems();
+}
+
+init().catch(err => console.error('Init error:', err));
+</script>
+</body>
+</html>

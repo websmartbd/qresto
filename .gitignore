@@ -1,0 +1,6 @@
+bk.zip
+*.zip
+*.tar.gz
+.DS_Store
+.env*
+node_modules/

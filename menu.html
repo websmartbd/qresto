@@ -1,0 +1,1531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Menu</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','system-ui','sans-serif']},colors:{brand:'var(--brand, #15803d)'}}}};</script>
+<style>
+:root {
+  --brand: #15803d;
+  --brand-hover: #166534;
+  --brand-light: rgba(21, 128, 61, 0.08);
+}
+.bg-brand { background-color: var(--brand) !important; }
+button.bg-brand:hover, a.bg-brand:hover { background-color: var(--brand-hover) !important; }
+.text-brand { color: var(--brand) !important; }
+.border-brand { border-color: var(--brand) !important; }
+.hover\:bg-brand:hover { background-color: var(--brand-hover) !important; border-color: var(--brand-hover) !important; color: #ffffff !important; }
+.hover\:bg-brand-hover:hover { background-color: var(--brand-hover) !important; }
+.hover\:text-white:hover { color: #ffffff !important; }
+.focus\:border-brand:focus { border-color: var(--brand) !important; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="demo-data.js"></script>
+<script src="config.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans">
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-xs">
+  <div class="max-w-xl mx-auto px-3 py-2 flex items-center justify-between gap-3">
+    <div class="min-w-0 flex-1">
+      <h1 id="rn" class="font-extrabold text-base sm:text-lg leading-tight text-slate-900 truncate">
+        <span class="inline-block h-5 w-28 bg-slate-200 rounded animate-pulse"></span>
+      </h1>
+    </div>
+    <div class="flex items-center gap-1.5 shrink-0">
+      <!-- Language Toggle -->
+      <button type="button" onclick="toggleLang()" class="h-8 px-2.5 rounded-full text-xs font-extrabold bg-slate-100 hover:bg-slate-200 text-slate-700 transition active:scale-95 flex items-center justify-center shadow-2xs" title="বাংলা / English">
+        <span id="lang_lbl">বাং</span>
+      </button>
+
+      <!-- Waiter Service Icon Button (1-Click Call, No Modal) -->
+      <button type="button" id="waiter_btn" onclick="callWaiter()" class="w-8 h-8 rounded-full flex items-center justify-center text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition active:scale-95 shadow-2xs text-sm" title="Call Waiter">
+        🔔
+      </button>
+
+      <!-- Wi-Fi Icon Button (Icon only) -->
+      <button type="button" id="wifi_btn" onclick="openWifiModal()" class="hidden w-8 h-8 rounded-full items-center justify-center text-brand border border-brand/25 bg-brand/5 hover:bg-brand/10 transition active:scale-95 shadow-2xs" title="Free Wi-Fi">
+        <svg class="w-4 h-4 text-brand shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.393 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <div class="max-w-xl mx-auto px-3 pb-1.5 pt-0.5">
+    <div class="relative">
+      <input id="search_in" type="text" oninput="onSearch(this.value)" placeholder="Search food items..." class="w-full bg-slate-100 hover:bg-slate-150 focus:bg-white text-slate-800 placeholder-slate-400 text-xs sm:text-sm pl-8 pr-7 py-1.5 rounded-full border border-slate-200 focus:border-brand focus:outline-none transition">
+      <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <button id="search_clear" type="button" onclick="clearSearch()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">✕</button>
+    </div>
+  </div>
+
+  <nav id="cats" class="max-w-xl mx-auto flex gap-1.5 overflow-x-auto no-scrollbar px-3 pb-2 pt-0.5">
+    <div class="h-7 w-12 bg-slate-200 rounded-full animate-pulse shrink-0"></div>
+    <div class="h-7 w-16 bg-slate-200 rounded-full animate-pulse shrink-0"></div>
+    <div class="h-7 w-14 bg-slate-200 rounded-full animate-pulse shrink-0"></div>
+    <div class="h-7 w-16 bg-slate-200 rounded-full animate-pulse shrink-0"></div>
+    <div class="h-7 w-14 bg-slate-200 rounded-full animate-pulse shrink-0"></div>
+  </nav>
+</header>
+
+<!-- Live Order Status Tracker (Appears when active order exists) -->
+<div id="tracker_wrap" class="max-w-xl mx-auto px-3 pt-2 pb-0.5 hidden">
+  <div onclick="openOrderDetails()" class="bg-white border border-brand/25 hover:border-brand/45 rounded-2xl p-2.5 sm:p-3 shadow-xs relative overflow-hidden cursor-pointer transition active:scale-[0.99] group" title="Click to view ordered items">
+    <div class="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <span class="relative flex h-2 w-2 shrink-0">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <h3 class="font-bold text-xs sm:text-sm text-slate-900 shrink-0" id="tr_title">Active Order</h3>
+        <span class="text-slate-300 text-xs shrink-0">•</span>
+        <span id="tr_info_text" class="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Chef is preparing your food...</span>
+      </div>
+      <button type="button" id="tr_clear_btn" onclick="event.stopPropagation(); clearTracker();" class="hidden text-slate-400 hover:text-slate-700 text-xs shrink-0 font-bold px-1.5 py-0.5 rounded hover:bg-slate-100 transition" title="Close">✕</button>
+    </div>
+
+    <!-- 4-step timeline -->
+    <div class="grid grid-cols-4 gap-1 pt-2 pb-0.5 text-center text-[10px] sm:text-xs">
+      <div id="step_new" class="flex flex-col items-center gap-1 font-bold">
+        <div class="step-num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs bg-brand text-white shadow-2xs">1</div>
+        <span class="step-lbl text-brand">Received</span>
+      </div>
+      <div id="step_prep" class="flex flex-col items-center gap-1 font-bold text-slate-400">
+        <div class="step-num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs bg-slate-100 text-slate-500">2</div>
+        <span class="step-lbl">Cooking</span>
+      </div>
+      <div id="step_served" class="flex flex-col items-center gap-1 font-bold text-slate-400">
+        <div class="step-num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs bg-slate-100 text-slate-500">3</div>
+        <span class="step-lbl">Served</span>
+      </div>
+      <div id="step_paid" class="flex flex-col items-center gap-1 font-bold text-slate-400">
+        <div class="step-num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs bg-slate-100 text-slate-500">4</div>
+        <span class="step-lbl">Paid</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="list" class="max-w-xl mx-auto px-3 py-2 pb-20 transition-[opacity,transform] duration-150 ease-out will-change-[opacity,transform]">
+  <div class="space-y-1.5">
+    <div class="bg-white border border-slate-200/80 rounded-md p-2.5 flex gap-3 animate-pulse">
+      <div class="w-16 h-16 rounded bg-slate-200 shrink-0"></div>
+      <div class="min-w-0 flex-1 space-y-2 py-1">
+        <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+        <div class="h-3 bg-slate-200 rounded w-4/5"></div>
+        <div class="h-3.5 bg-slate-200 rounded w-16 mt-1"></div>
+      </div>
+      <div class="self-center w-14 h-8 bg-slate-200 rounded-md shrink-0"></div>
+    </div>
+    <div class="bg-white border border-slate-200/80 rounded-md p-2.5 flex gap-3 animate-pulse">
+      <div class="w-16 h-16 rounded bg-slate-200 shrink-0"></div>
+      <div class="min-w-0 flex-1 space-y-2 py-1">
+        <div class="h-4 bg-slate-200 rounded w-3/5"></div>
+        <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+        <div class="h-3.5 bg-slate-200 rounded w-16 mt-1"></div>
+      </div>
+      <div class="self-center w-14 h-8 bg-slate-200 rounded-md shrink-0"></div>
+    </div>
+    <div class="bg-white border border-slate-200/80 rounded-md p-2.5 flex gap-3 animate-pulse">
+      <div class="w-16 h-16 rounded bg-slate-200 shrink-0"></div>
+      <div class="min-w-0 flex-1 space-y-2 py-1">
+        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        <div class="h-3 bg-slate-200 rounded w-2/3"></div>
+        <div class="h-3.5 bg-slate-200 rounded w-16 mt-1"></div>
+      </div>
+      <div class="self-center w-14 h-8 bg-slate-200 rounded-md shrink-0"></div>
+    </div>
+    <div class="bg-white border border-slate-200/80 rounded-md p-2.5 flex gap-3 animate-pulse">
+      <div class="w-16 h-16 rounded bg-slate-200 shrink-0"></div>
+      <div class="min-w-0 flex-1 space-y-2 py-1">
+        <div class="h-4 bg-slate-200 rounded w-3/5"></div>
+        <div class="h-3 bg-slate-200 rounded w-4/5"></div>
+        <div class="h-3.5 bg-slate-200 rounded w-16 mt-1"></div>
+      </div>
+      <div class="self-center w-14 h-8 bg-slate-200 rounded-md shrink-0"></div>
+    </div>
+  </div>
+</main>
+
+<div id="bar" class="hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200">
+  <div class="max-w-xl mx-auto p-2">
+    <button onclick="openCart()" class="w-full bg-brand text-white rounded-md py-2.5 px-3 font-bold flex justify-between">
+      <span id="bc"></span><span>View order</span>
+    </button>
+  </div>
+</div>
+
+<div id="sheet" onclick="if(event.target.id==='sheet')closeCart()" class="hidden fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 items-end justify-center transition-opacity duration-200 opacity-0 pointer-events-none">
+  <div id="sheet_panel" class="bg-white w-full max-w-xl mx-auto rounded-t-2xl max-h-[85vh] flex flex-col shadow-2xl border-t border-slate-100 overflow-hidden transform transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] translate-y-full will-change-transform">
+    <div class="flex justify-between items-center px-4 py-3.5 border-b border-slate-100 bg-slate-50/70">
+      <h2 class="font-bold text-slate-900 text-base">Your Order</h2>
+      <button onclick="closeCart()" aria-label="Close" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-xs font-bold transition">✕</button>
+    </div>
+    <div id="cl" class="overflow-y-auto px-4 divide-y divide-slate-100"></div>
+    <div class="px-4 py-3 border-t border-slate-100 space-y-2.5 bg-slate-50/40">
+      <input id="note" maxlength="200" placeholder="Note for kitchen (optional, e.g. less spicy)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand bg-white shadow-2xs">
+      <div id="cp_box" class="pt-0.5">
+        <div id="cp_input_row" class="flex gap-2">
+          <input id="cp_in" placeholder="Coupon code" class="flex-1 min-w-0 uppercase border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-brand bg-white shadow-2xs">
+          <button onclick="applyCoupon()" class="bg-slate-800 hover:bg-slate-900 text-white rounded-xl px-4 py-1.5 text-xs font-semibold shrink-0 shadow-2xs">Apply</button>
+        </div>
+        <div id="cp_applied_row" class="hidden items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-xs">
+          <span class="text-emerald-800 font-medium">Coupon <b id="cp_code_lbl"></b> applied (<span id="cp_disc_lbl"></span> off)</span>
+          <button onclick="removeCoupon()" class="text-red-600 font-semibold hover:underline ml-2">Remove</button>
+        </div>
+        <p id="cp_msg" class="text-xs mt-1 hidden"></p>
+      </div>
+      <div class="border-t border-slate-200/60 pt-2 space-y-1.5 text-xs">
+        <div class="flex justify-between text-slate-500"><span>Subtotal</span><span id="c_sub" class="font-medium text-slate-800"></span></div>
+        <div id="c_disc_row" class="hidden justify-between text-emerald-700 font-medium"><span>Coupon discount</span><span id="c_disc"></span></div>
+        <div class="flex justify-between font-extrabold text-sm sm:text-base pt-1 border-t border-slate-200/60 text-slate-900"><span>Total</span><span id="ct" class="text-brand"></span></div>
+      </div>
+      <button id="pb" onclick="place()" class="w-full bg-brand hover:opacity-95 text-white rounded-xl py-3 font-bold text-sm shadow-md transition disabled:opacity-50">Place Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Item Customizer Bottom Sheet (Variants & Add-ons) -->
+<div id="customizer_sheet" onclick="if(event.target.id==='customizer_sheet')closeCustomizer()" class="hidden fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity duration-200 opacity-0 pointer-events-none">
+  <div id="customizer_panel" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85vh] flex flex-col transform transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] translate-y-full sm:translate-y-0 sm:scale-95 overflow-hidden will-change-transform">
+    <!-- Header -->
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+      <div class="min-w-0 pr-2">
+        <h3 id="cz_title" class="font-extrabold text-base text-slate-900 truncate"></h3>
+        <p id="cz_desc" class="text-xs text-slate-500 truncate mt-0.5"></p>
+      </div>
+      <button type="button" onclick="closeCustomizer()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-xs font-bold shrink-0 transition">✕</button>
+    </div>
+
+    <!-- Body Scrollable Content -->
+    <div id="cz_content" class="p-4 overflow-y-auto space-y-4 flex-1"></div>
+
+    <!-- Dish Quantity Selector -->
+    <div id="cz_dish_qty_row" class="px-4 py-2.5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between shrink-0">
+      <div>
+        <span class="text-xs font-bold text-slate-800 block" id="cz_qty_lbl">Quantity</span>
+        <span class="text-[10px] text-slate-400" id="cz_qty_sub">How many plates / servings?</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="chgCustomizerDishQty(-1)" class="w-8 h-8 rounded-lg border border-slate-300 bg-white font-bold hover:bg-slate-50 flex items-center justify-center text-slate-700 shadow-2xs">−</button>
+        <span id="cz_dish_qty" class="w-7 text-center font-black text-sm text-slate-900 tabular-nums">1</span>
+        <button type="button" onclick="chgCustomizerDishQty(1)" class="w-8 h-8 rounded-lg bg-brand text-white font-bold hover:opacity-95 flex items-center justify-center shadow-2xs">+</button>
+      </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="p-3.5 border-t border-slate-100 bg-white flex items-center justify-between gap-3 shrink-0">
+      <div>
+        <span class="text-[11px] text-slate-400 font-medium block leading-none mb-1" id="cz_tot_lbl">Total Price</span>
+        <span id="cz_total_price" class="text-base font-black text-brand tabular-nums"></span>
+      </div>
+      <button type="button" id="cz_add_btn" onclick="addCustomizedToCart()" class="flex-1 bg-brand hover:opacity-95 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm shadow-md transition active:scale-95 text-center">
+        Add to Order
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Details Bottom Sheet (Active Order Summary) -->
+<div id="order_details_sheet" onclick="if(event.target.id==='order_details_sheet')closeOrderDetails()" class="hidden fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity duration-200 opacity-0 pointer-events-none">
+  <div id="order_details_panel" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85vh] flex flex-col transform transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] translate-y-full sm:translate-y-0 sm:scale-95 overflow-hidden will-change-transform">
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+      <div>
+        <h3 id="od_title" class="font-extrabold text-base text-slate-900 leading-tight">Order Details</h3>
+        <p id="od_sub" class="text-xs text-slate-500 mt-0.5"></p>
+      </div>
+      <button type="button" onclick="closeOrderDetails()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-xs font-bold shrink-0 transition cursor-pointer">✕</button>
+    </div>
+    <div id="od_items" class="p-4 overflow-y-auto space-y-2 flex-1"></div>
+    <div id="od_footer" class="p-4 bg-slate-50/80 border-t border-slate-100 shrink-0 space-y-2"></div>
+  </div>
+</div>
+
+<div id="zm" onclick="unzoom()" class="hidden fixed inset-0 z-30 bg-black/80 items-center justify-center p-4 transition-opacity duration-200 opacity-0 pointer-events-none">
+  <div id="zm_card" onclick="event.stopPropagation()" class="relative w-full max-w-sm bg-white rounded-xl overflow-hidden shadow-xl transform transition-all duration-200 scale-95 opacity-0 will-change-transform">
+    <button onclick="unzoom()" aria-label="Close" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/55 text-white leading-none">✕</button>
+    <img id="zi" class="w-full max-h-[58vh] object-cover bg-slate-100">
+    <div id="zp" class="p-3"></div>
+  </div>
+</div>
+
+<div id="wifi_modal" onclick="closeWifiModal()" class="hidden fixed inset-0 z-40 bg-black/60 items-center justify-center p-4 transition-opacity duration-200 opacity-0 pointer-events-none">
+  <div id="wf_card" onclick="event.stopPropagation()" class="bg-white w-full max-w-[340px] sm:max-w-sm rounded-2xl p-4 sm:p-5 shadow-2xl relative border border-slate-100 transform transition-all duration-200 scale-95 opacity-0 will-change-transform">
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.393 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+        </div>
+        <div class="min-w-0 text-left">
+          <h3 class="font-extrabold text-sm text-slate-900 leading-tight">Guest Wi-Fi</h3>
+          <p class="text-[11px] text-slate-400 font-medium truncate">Connect to restaurant internet</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeWifiModal()" aria-label="Close" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition text-xs font-bold shrink-0">✕</button>
+    </div>
+
+    <!-- QR Code Container -->
+    <div class="my-3.5 flex flex-col items-center">
+      <div class="p-2.5 bg-white border border-slate-200/90 rounded-2xl shadow-xs inline-block">
+        <div id="wf_qr_container" class="w-36 h-36 flex items-center justify-center overflow-hidden">
+          <img id="wf_qr_img" class="w-full h-full object-contain hidden" alt="Wi-Fi QR">
+          <div id="wf_qr_canvas" class="flex items-center justify-center"></div>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2 font-medium flex items-center gap-1">
+        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>Scan QR code with phone camera</span>
+      </p>
+    </div>
+
+    <!-- Details Box (Network & Password) -->
+    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-left space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs text-slate-500 font-medium">Network (SSID)</span>
+        <b id="wf_m_name" class="text-xs font-bold text-slate-800 truncate text-right"></b>
+      </div>
+      <div id="wf_m_pass_row" class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
+        <div class="min-w-0 flex-1">
+          <span class="text-[11px] text-slate-400 font-medium block">Password</span>
+          <span id="wf_m_pass" class="font-mono text-xs font-extrabold text-slate-900 tracking-wider truncate block"></span>
+        </div>
+        <button type="button" onclick="copyWifiPass()" id="cp_wf_btn" class="bg-brand text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 hover:opacity-90 active:scale-95 transition shadow-xs shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <span id="cp_wf_text">Copy</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Close Button -->
+    <button type="button" onclick="closeWifiModal()" class="w-full mt-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-700 font-bold py-2 rounded-xl text-xs transition">
+      Close
+    </button>
+  </div>
+</div>
+
+
+<script>
+let zid=null;
+function zoom(id){
+  zid=id;
+  const i=items.find(x=>x.id==id);
+  $('zi').src=i.image_url;
+  $('zi').alt=i.name;
+  zdraw();
+  const m=$('zm'), c=$('zm_card');
+  m.classList.remove('hidden','pointer-events-none');
+  m.classList.add('flex');
+  requestAnimationFrame(()=>{
+    m.classList.remove('opacity-0');
+    m.classList.add('opacity-100');
+    if(c){
+      c.classList.remove('scale-95','opacity-0');
+      c.classList.add('scale-100','opacity-100');
+    }
+  });
+}
+function unzoom(){
+  zid=null;
+  const m=$('zm'), c=$('zm_card');
+  if(!m || m.classList.contains('hidden')) return;
+  m.classList.remove('opacity-100');
+  m.classList.add('opacity-0','pointer-events-none');
+  if(c){
+    c.classList.remove('scale-100','opacity-100');
+    c.classList.add('scale-95','opacity-0');
+  }
+  setTimeout(()=>{
+    if(m.classList.contains('opacity-0')){
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+  },200);
+}
+function zdraw(){
+  const i=items.find(x=>x.id==zid);if(!i)return;
+  const off=pr(i)<i.price;
+  const hasCustom = (Array.isArray(i.variants) && i.variants.length > 0) || (Array.isArray(i.addons) && i.addons.length > 0);
+  const canOrder = R.allow_orders !== false;
+  let actionHtml = '';
+  if(!canOrder){
+    actionHtml = '<p class="text-center text-xs text-slate-400 py-2">Catalog view only</p>';
+  } else if(hasCustom){
+    actionHtml = `<button onclick="unzoom(); openCustomizer(${i.id})" class="w-full bg-brand text-white rounded-md py-2.5 font-bold hover:opacity-95 transition">${t('add')}</button>`;
+  } else {
+    const q=cart[i.id];
+    actionHtml = q ? `<div class="flex items-center justify-between"><span class="text-sm text-slate-500">${curLang==='bn'?'অর্ডারে আছে':'In your order'}</span><div class="flex items-center gap-3"><button onclick="chg(${i.id},-1)" class="w-9 h-9 rounded-md border border-slate-300 font-bold text-lg">−</button><span class="w-5 text-center font-bold">${q}</span><button onclick="chg(${i.id},1)" class="w-9 h-9 rounded-md bg-brand text-white font-bold text-lg">+</button></div></div>` : `<button onclick="chg(${i.id},1)" class="w-full bg-brand text-white rounded-md py-2.5 font-bold hover:opacity-95 transition">${t('add')}</button>`;
+  }
+  $('zp').innerHTML=`<div class="flex justify-between items-start gap-3"><div class="min-w-0"><h3 class="font-extrabold text-lg leading-snug">${esc(i.name)}</h3>${i.description?`<p class="text-sm text-slate-500 mt-0.5">${esc(i.description)}</p>`:''}</div>
+  <div class="text-right shrink-0"><p class="text-xl font-extrabold ${off?'text-brand':''}">${tk(pr(i))}</p>${off?`<p class="text-xs text-slate-400"><s>${tk(i.price)}</s> · save ${tk(i.price-pr(i))}</p>`:''}</div></div>
+  <div class="mt-3">${actionHtml}</div>`;
+}
+addEventListener('keydown',e=>e.key==='Escape'&&(unzoom(),closeWifiModal(),closeOrderDetails(),closeCustomizer()));
+
+function openWifiModal(){
+  if(!R.wifi_name && !R.wifi_qr) return;
+  $('wf_m_name').textContent = R.wifi_name || 'Guest Wi-Fi';
+  if(R.wifi_pass){
+    $('wf_m_pass').textContent = R.wifi_pass;
+    $('wf_m_pass_row').classList.remove('hidden');
+    $('wf_m_pass_row').classList.add('flex');
+  } else {
+    $('wf_m_pass_row').classList.add('hidden');
+    $('wf_m_pass_row').classList.remove('flex');
+  }
+  const qrCanvas = $('wf_qr_canvas');
+  const qrImg = $('wf_qr_img');
+  qrCanvas.innerHTML = '';
+  if(R.wifi_qr){
+    qrImg.src = R.wifi_qr;
+    qrImg.classList.remove('hidden');
+    qrCanvas.classList.add('hidden');
+  } else {
+    qrImg.classList.add('hidden');
+    qrCanvas.classList.remove('hidden');
+    const wifiText = `WIFI:S:${R.wifi_name||''};T:${R.wifi_pass?'WPA':'nopass'};P:${R.wifi_pass||''};;`;
+    if(window.QRCode){
+      new QRCode(qrCanvas, { text: wifiText, width: 135, height: 135 });
+    } else {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(wifiText)}`;
+      qrImg.classList.remove('hidden');
+      qrCanvas.classList.add('hidden');
+    }
+  }
+  const m=$('wifi_modal'), c=$('wf_card');
+  m.classList.remove('hidden','pointer-events-none');
+  m.classList.add('flex');
+  requestAnimationFrame(()=>{
+    m.classList.remove('opacity-0');
+    m.classList.add('opacity-100');
+    if(c){
+      c.classList.remove('scale-95','opacity-0');
+      c.classList.add('scale-100','opacity-100');
+    }
+  });
+}
+
+function closeWifiModal(){
+  const m=$('wifi_modal'), c=$('wf_card');
+  if(!m || m.classList.contains('hidden')) return;
+  m.classList.remove('opacity-100');
+  m.classList.add('opacity-0','pointer-events-none');
+  if(c){
+    c.classList.remove('scale-100','opacity-100');
+    c.classList.add('scale-95','opacity-0');
+  }
+  setTimeout(()=>{
+    if(m.classList.contains('opacity-0')){
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+  },200);
+}
+
+function copyWifiPass(){
+  if(!R.wifi_pass) return;
+  const setCopied = () => {
+    const t = $('cp_wf_text');
+    if(t) t.textContent = 'Copied!';
+    setTimeout(() => { if(t) t.textContent = 'Copy'; }, 1500);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(R.wifi_pass).then(setCopied).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
+  function fallbackCopy(){
+    const ta = document.createElement('textarea');
+    ta.value = R.wifi_pass;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      setCopied();
+    } catch(e){
+      alert('Password: ' + R.wifi_pass);
+    }
+    document.body.removeChild(ta);
+  }
+}
+
+function darken(hex, pct){
+  try {
+    let c = String(hex||'').replace('#','');
+    if(c.length === 3) c = c.split('').map(x=>x+x).join('');
+    const num = parseInt(c, 16);
+    let r = Math.max(0, (num >> 16) - Math.round(255 * (pct/100)));
+    let g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(255 * (pct/100)));
+    let b = Math.max(0, (num & 0x0000FF) - Math.round(255 * (pct/100)));
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  } catch(e){ return hex; }
+}
+function applyTheme(hex){
+  if(!hex) hex = '#15803d';
+  document.documentElement.style.setProperty('--brand', hex);
+  document.documentElement.style.setProperty('--brand-hover', darken(hex, 12));
+  document.documentElement.style.setProperty('--brand-light', hex + '18');
+}
+
+let R={};
+const $=id=>document.getElementById(id),
+  tk=n=>(R.currency||'৳')+Number(n||0).toLocaleString('en-IN'),
+  esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tid=new URLSearchParams(location.search).get('t');
+const CART_KEY = 'menu_cart_' + (tid || 'default');
+let items=[],cats=[],cart={},cartMeta={},cur='All',tableNo='',appliedCoupon=null;
+
+let curLang = localStorage.getItem('qrmenu_lang') || 'en';
+const I18N = {
+  en: {
+    lang_btn: 'বাং', wifi: 'Wi-Fi', service: 'Service',
+    search_ph: 'Search food items...', all: 'All', offers: 'Offers',
+    add: 'Order', in_order: 'In your order', add_to_order: 'Order',
+    catalog_only: 'Catalog', view_order: 'View order', items: 'items', item: 'item',
+    place_order: 'Place Order', subtotal: 'Subtotal', discount: 'Coupon discount',
+    total: 'Total', req_bill: 'Request Bill', order_more: 'Order more'
+  },
+  bn: {
+    lang_btn: 'EN', wifi: 'ওয়াই-ফাই', service: 'ওয়েটার',
+    search_ph: 'খাবারের নাম লিখুন...', all: 'সব', offers: 'অফার',
+    add: 'অর্ডার', in_order: 'অর্ডারে আছে', add_to_order: 'অর্ডার',
+    catalog_only: 'শুধুমাত্র মেনু দর্শন', view_order: 'অর্ডার দেখুন', items: 'টি আইটেম', item: 'টি আইটেম',
+    place_order: 'অর্ডার পাঠান', subtotal: 'উপমোট', discount: 'কুপন ছাড়',
+    total: 'সর্বমোট', req_bill: 'বিল চেয়ে পাঠান', order_more: 'আরও অর্ডার করুন'
+  }
+};
+const t = k => (I18N[curLang] && I18N[curLang][k]) || (I18N.en[k] || k);
+
+function toggleLang(){
+  curLang = curLang === 'en' ? 'bn' : 'en';
+  localStorage.setItem('qrmenu_lang', curLang);
+  applyLang();
+  updateTrackerUI();
+  render();
+}
+function applyLang(){
+  const l = $('lang_lbl'); if(l) l.textContent = t('lang_btn');
+  const si = $('search_in'); if(si) si.placeholder = t('search_ph');
+  const pb = $('pb'); if(pb && !pb.disabled) pb.textContent = t('place_order');
+  if(activeOrderData) updateTrackerUI();
+}
+
+let searchQ = '';
+function onSearch(v){
+  searchQ = (v||'').trim();
+  $('search_clear').classList.toggle('hidden', !searchQ);
+  renderItems();
+}
+function clearSearch(){
+  searchQ = '';
+  if($('search_in')) $('search_in').value = '';
+  $('search_clear').classList.add('hidden');
+  renderItems();
+}
+
+function getFoodBadges(i){
+  const b = [];
+  const text = ((i.name||'') + ' ' + (i.description||'')).toLowerCase();
+  if(text.includes('chili') || text.includes('spicy') || text.includes('tikka') || text.includes('tehari') || text.includes('kebab')){
+    b.push('<span class="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 py-0.5 rounded border border-amber-200/60 inline-flex items-center gap-0.5">🌶️ Spicy</span>');
+  }
+  if(text.includes('naan') || text.includes('firni') || text.includes('salad') || text.includes('daal') || text.includes('lassi') || text.includes('coffee') || text.includes('mojito') || text.includes('rice')){
+    b.push('<span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200/60 inline-flex items-center gap-0.5">🥦 Veg</span>');
+  }
+  if(i.id === 1 || i.id === 5 || i.id === 8){
+    b.push('<span class="text-[9px] font-bold text-rose-700 bg-rose-50 px-1 py-0.5 rounded border border-rose-200/60 inline-flex items-center gap-0.5">🔥 Popular</span>');
+  }
+  return b.join('');
+}
+
+function catLabel(c){
+  if(curLang !== 'bn'){
+    if(c === '🌶️ Spicy') return '🌶️ Spicy';
+    if(c === '🥦 Veg') return '🥦 Veg';
+    if(c === '🔥 Popular') return '🔥 Popular';
+    return c;
+  }
+  const map = {
+    'All': 'সব', 'Offers': 'অফার', '🌶️ Spicy': '🌶️ ঝাল', '🥦 Veg': '🥦 নিরামিষ', '🔥 Popular': '🔥 জনপ্রিয়',
+    'Curry': 'কারি', 'Rice': 'রাইস', 'Grill': 'গ্রিল', 'Drinks': 'পানীয়', 'Dessert': 'মিষ্টি', 'Breads': 'রুটি ও নান', 'Salad': 'সালাদ'
+  };
+  return map[c] || c;
+}
+
+let menuBc;
+try {
+  menuBc = new BroadcastChannel('qrmenu_demo_v2');
+  menuBc.addEventListener('message', e => {
+    if (e.data && e.data.t === 'waiter_dismiss') {
+      const myTbl = String(tableNo || '1');
+      if (!e.data.table || String(e.data.table) === myTbl) {
+        updateWaiterBtnState(false);
+        showToast(curLang === 'bn' ? 'ওয়েটার কল সম্পন্ন হয়েছে।' : 'Waiter request resolved.');
+      }
+    }
+  });
+} catch(e){}
+
+window.addEventListener('storage', e => {
+  if (e.key === 'qrmenu_waiter_calls') {
+    updateWaiterBtnState(hasActiveWaiterCall());
+  }
+});
+
+function hasActiveWaiterCall(tbl){
+  const target = String(tbl || tableNo || '1');
+  try {
+    const calls = JSON.parse(localStorage.getItem('qrmenu_waiter_calls') || '[]');
+    return calls.some(c => String(c.table) === target);
+  } catch(e){
+    return false;
+  }
+}
+
+function updateWaiterBtnState(active){
+  const btn = $('waiter_btn');
+  if(!btn) return;
+  const isAct = (active !== undefined) ? !!active : hasActiveWaiterCall();
+  if(isAct){
+    btn.className = 'relative w-8 h-8 rounded-full flex items-center justify-center text-amber-700 bg-amber-100 border border-amber-300 transition active:scale-95 shadow-xs text-sm ring-2 ring-amber-400/50 animate-pulse';
+    btn.title = curLang === 'bn' ? 'ওয়েটারকে জানানো হয়েছে... (টেবিলে আসছেন)' : 'Waiter notified... (coming soon)';
+    if(!btn.querySelector('.waiter-ping')){
+      const ping = document.createElement('span');
+      ping.className = 'waiter-ping absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5 pointer-events-none';
+      ping.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>';
+      btn.appendChild(ping);
+    }
+  } else {
+    btn.className = 'relative w-8 h-8 rounded-full flex items-center justify-center text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition active:scale-95 shadow-2xs text-sm';
+    btn.title = curLang === 'bn' ? 'ওয়েটার ডাকুন' : 'Call Waiter';
+    const ping = btn.querySelector('.waiter-ping');
+    if(ping) ping.remove();
+  }
+}
+
+function callWaiter(customMsg){
+  const tbl = String(tableNo || '1');
+  if(hasActiveWaiterCall(tbl)){
+    showToast(curLang === 'bn' ? 'ওয়েটারকে ইতিমধ্যে ডাকা হয়েছে! টেবিলে আসা পর্যন্ত অপেক্ষা করুন।' : 'Waiter already called! Please wait until staff arrives.', true);
+    updateWaiterBtnState(true);
+    return;
+  }
+  const now = Date.now();
+  const reqText = customMsg || (curLang === 'bn' ? 'ওয়েটার প্রয়োজন' : 'Waiter needed');
+  const callObj = { id: crypto.randomUUID(), table: tbl, req: reqText, time: now };
+  try {
+    let calls = JSON.parse(localStorage.getItem('qrmenu_waiter_calls') || '[]');
+    calls = calls.filter(c => String(c.table) !== tbl);
+    calls.unshift(callObj);
+    localStorage.setItem('qrmenu_waiter_calls', JSON.stringify(calls.slice(0, 20)));
+    if(menuBc) menuBc.postMessage({ t: 'waiter_call', table: tbl, req: reqText, id: callObj.id, time: now });
+  } catch(e){}
+  updateWaiterBtnState(true);
+  showToast(curLang === 'bn' ? `টেবিল ${tbl}-এ ওয়েটার ডাকা হয়েছে!` : `Waiter called for Table ${tbl}!`);
+}
+
+function showToast(m, isWarn = false){
+  let t = $('cust_toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'cust_toast';
+    t.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur-xs text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-xl shadow-xl border border-slate-700/60 transition-all duration-200 opacity-0 pointer-events-none flex items-center gap-2.5 max-w-[92vw] w-auto whitespace-normal transform -translate-y-2';
+    document.body.appendChild(t);
+  }
+  t.innerHTML = `<span class="w-5 h-5 rounded-full ${isWarn ? 'bg-amber-500/25 text-amber-400' : 'bg-emerald-500/25 text-emerald-400'} flex items-center justify-center font-bold text-xs shrink-0">${isWarn ? '!' : '✓'}</span> <span class="leading-tight">${esc(m)}</span>`;
+  t.classList.remove('pointer-events-none', 'opacity-0', '-translate-y-2');
+  t.classList.add('opacity-100', 'translate-y-0');
+  if(t._timer) clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{
+    t.classList.remove('opacity-100', 'translate-y-0');
+    t.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none');
+  }, 2800);
+}
+
+let activeOrderId = localStorage.getItem('qrmenu_active_order_id');
+let activeOrderData = null;
+
+async function checkActiveOrder(){
+  activeOrderId = localStorage.getItem('qrmenu_active_order_id');
+  if(!activeOrderId){
+    $('tracker_wrap')?.classList.add('hidden');
+    return;
+  }
+  try {
+    const { data: o } = await db.from('orders').select('*,order_items(*)').eq('id', activeOrderId).single();
+    if(!o || o.status === 'cancelled'){
+      clearTracker();
+      return;
+    }
+    activeOrderData = o;
+    updateTrackerUI();
+  } catch(e){}
+}
+
+function updateTrackerUI(){
+  if(!activeOrderData){
+    $('tracker_wrap')?.classList.add('hidden');
+    return;
+  }
+  const o = activeOrderData;
+  const wrap = $('tracker_wrap');
+  if(!wrap) return;
+  wrap.classList.remove('hidden');
+
+  const isBn = curLang === 'bn';
+  if($('tr_title')){
+    $('tr_title').textContent = isBn ? 'চলমান অর্ডার' : 'Active Order';
+  }
+
+  const st = o.status;
+  const info = $('tr_info_text');
+  const closeBtn = $('tr_clear_btn');
+  if(closeBtn) closeBtn.title = isBn ? 'বন্ধ করুন' : 'Close';
+
+  const stepLabels = {
+    step_new: isBn ? 'গৃহীত' : 'Received',
+    step_prep: isBn ? 'রান্না হচ্ছে' : 'Cooking',
+    step_served: isBn ? 'পরিবেশিত' : 'Served',
+    step_paid: isBn ? 'পরিশোধিত' : 'Paid'
+  };
+
+  ['step_new', 'step_prep', 'step_served', 'step_paid'].forEach(id => {
+    const el = $(id);
+    if(!el) return;
+    el.className = 'flex flex-col items-center gap-1 font-bold text-slate-400';
+    const num = el.querySelector('.step-num');
+    if(num){
+      num.className = 'step-num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs bg-slate-100 text-slate-500';
+    }
+    const lbl = el.querySelector('.step-lbl');
+    if(lbl) lbl.textContent = stepLabels[id];
+  });
+
+  const markActive = (id) => {
+    const el = $(id);
+    if(!el) return;
+    el.className = 'flex flex-col items-center gap-1 font-bold text-brand';
+    const num = el.querySelector('.step-num');
+    if(num) num.className = 'step-num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs bg-brand text-white shadow-2xs animate-pulse';
+  };
+  const markDone = (id) => {
+    const el = $(id);
+    if(!el) return;
+    el.className = 'flex flex-col items-center gap-1 font-bold text-emerald-700';
+    const num = el.querySelector('.step-num');
+    if(num){
+      num.className = 'step-num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs bg-emerald-600 text-white';
+      num.textContent = '✓';
+    }
+  };
+
+  if(st === 'new'){
+    markActive('step_new');
+    if(info) info.textContent = isBn ? (R.prep_time ? `রান্না শুরু হবে · ${R.prep_time}` : 'অর্ডার গৃহীত হয়েছে') : (R.prep_time ? `Kitchen queued · Est. ${R.prep_time}` : 'Kitchen received order');
+    if(closeBtn) closeBtn.classList.add('hidden');
+  } else if(st === 'preparing'){
+    markDone('step_new');
+    markActive('step_prep');
+    if(info) info.textContent = isBn ? 'শেফ খাবার তৈরি করছেন...' : 'Chef is preparing your food...';
+    if(closeBtn) closeBtn.classList.add('hidden');
+  } else if(st === 'served'){
+    markDone('step_new');
+    markDone('step_prep');
+    markActive('step_served');
+    if(info) info.textContent = isBn ? 'খাবার পরিবেশিত সম্পন্ন 🍽️' : 'Food served at your table 🍽️';
+    if(closeBtn) closeBtn.classList.add('hidden');
+  } else if(st === 'paid'){
+    markDone('step_new');
+    markDone('step_prep');
+    markDone('step_served');
+    markDone('step_paid');
+    if(info) info.textContent = isBn ? 'বিল পরিশোধিত · ধন্যবাদ!' : 'Bill paid · Thank you!';
+    if(closeBtn) closeBtn.classList.remove('hidden');
+  }
+}
+
+function openOrderDetails(){
+  if(!activeOrderData) return;
+  const o = activeOrderData;
+  const isBn = curLang === 'bn';
+  const orderNoStr = isBn ? String(o.no || '').replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]) : (o.no || '');
+  
+  $('od_title').textContent = isBn ? 'আপনার অর্ডারের বিবরণ' : 'Your Order Details';
+  $('od_sub').textContent = `${isBn ? 'অর্ডার #' : 'Order #'}${orderNoStr} · ${isBn ? 'টেবিল' : 'Table'} ${esc(tableNo || '1')}`;
+
+  const items = Array.isArray(o.order_items) ? o.order_items : [];
+  if(!items.length){
+    $('od_items').innerHTML = `<p class="text-center text-sm text-slate-400 py-6">${isBn ? 'আইটেমের তালিকা পাওয়া যায়নি' : 'No items found'}</p>`;
+  } else {
+    $('od_items').innerHTML = items.map(i => `
+      <div class="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100/70 last:border-0">
+        <div class="flex items-baseline gap-2 min-w-0">
+          <span class="w-5 h-5 rounded-md bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0">${i.qty}×</span>
+          <span class="font-medium text-slate-800 text-xs sm:text-sm leading-snug">${esc(i.name)}</span>
+        </div>
+        <span class="font-bold text-slate-800 text-xs sm:text-sm tabular-nums shrink-0">${tk(i.price * i.qty)}</span>
+      </div>
+    `).join('');
+  }
+
+  let footerHtml = '';
+  if(o.note){
+    footerHtml += `<div class="bg-amber-50 border border-amber-200/80 rounded-lg px-3 py-1.5 text-xs text-amber-800 flex items-start gap-1.5"><span class="font-bold shrink-0">${isBn ? 'কিচেন নোট:' : 'Kitchen Note:'}</span> <span>${esc(o.note)}</span></div>`;
+  }
+  if(o.coupon && (o.discount > 0)){
+    footerHtml += `<div class="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 text-xs text-emerald-800 flex items-center justify-between font-medium"><span>${isBn ? 'কুপন ছাড়:' : 'Coupon discount:'} <b>${esc(o.coupon)}</b></span><span class="font-bold text-emerald-700">-${tk(o.discount)}</span></div>`;
+  }
+  footerHtml += `<div class="flex items-center justify-between pt-1 font-extrabold text-sm sm:text-base text-slate-900"><span>${isBn ? 'সর্বমোট' : 'Total'}</span><span class="text-brand">${tk(o.total)}</span></div>`;
+  footerHtml += `<button type="button" onclick="closeOrderDetails()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs sm:text-sm transition cursor-pointer mt-1">${isBn ? 'বন্ধ করুন' : 'Close'}</button>`;
+  $('od_footer').innerHTML = footerHtml;
+
+  const s = $('order_details_sheet'), p = $('order_details_panel');
+  s.classList.remove('hidden', 'pointer-events-none');
+  s.classList.add('flex');
+  requestAnimationFrame(() => {
+    s.classList.remove('opacity-0');
+    s.classList.add('opacity-100');
+    if(p){
+      p.classList.remove('translate-y-full');
+      p.classList.add('translate-y-0');
+    }
+  });
+}
+
+function closeOrderDetails(){
+  const s = $('order_details_sheet'), p = $('order_details_panel');
+  if(!s || s.classList.contains('hidden')) return;
+  s.classList.remove('opacity-100');
+  s.classList.add('opacity-0', 'pointer-events-none');
+  if(p){
+    p.classList.remove('translate-y-0');
+    p.classList.add('translate-y-full');
+  }
+  setTimeout(() => {
+    if(s.classList.contains('opacity-0')){
+      s.classList.add('hidden');
+      s.classList.remove('flex');
+    }
+  }, 240);
+}
+
+function clearTracker(){
+  localStorage.removeItem('qrmenu_active_order_id');
+  activeOrderId = null;
+  activeOrderData = null;
+  $('tracker_wrap')?.classList.add('hidden');
+}
+
+function saveCartState(){
+  try {
+    const data = {
+      cart,
+      cartMeta,
+      appliedCoupon,
+      note: $('note') ? $('note').value : ''
+    };
+    localStorage.setItem(CART_KEY, JSON.stringify(data));
+  } catch(e){}
+}
+
+function loadCartState(){
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    if(data && typeof data.cart === 'object'){
+      cart = {};
+      cartMeta = data.cartMeta || {};
+      for(const k of Object.keys(cartMeta)){
+        if(cartMeta[k] && cartMeta[k].name){
+          cartMeta[k].name = cleanName(cartMeta[k].name);
+        }
+      }
+      for(const [k, v] of Object.entries(data.cart)){
+        const baseId = String(k).split('__')[0];
+        if(items.some(i => i.id == baseId) && v > 0){
+          cart[k] = v;
+        }
+      }
+      appliedCoupon = data.appliedCoupon || null;
+      if($('note') && data.note) $('note').value = data.note;
+      if(appliedCoupon && $('cp_in')) $('cp_in').value = appliedCoupon.code;
+    }
+  } catch(e){}
+}
+
+function clearCartState(){
+  try {
+    cart = {};
+    cartMeta = {};
+    localStorage.removeItem(CART_KEY);
+  } catch(e){}
+}
+
+function msg(t,sub){$('list').innerHTML=`<div class="text-center py-16"><p class="font-bold text-lg">${t}</p><p class="text-slate-500 text-sm mt-1">${sub||''}</p></div>`;$('cats').innerHTML=''}
+
+async function init(){
+  if(!tid) return msg('Scan the QR code on your table','This page needs a table code.');
+  const [r,t,m]=await Promise.all([
+    db.from('restaurant').select().eq('id',1).single(),
+    db.from('tables').select().eq('id',tid).single(),
+    db.from('menu_items').select().eq('available',true).order('category').order('name')
+  ]);
+  if(t.error||!t.data) return msg('Table not found','Scan the QR code on your table again.');
+  if(m.error) return msg('Could not load the menu','Check your internet and refresh.');
+
+  R = r.data || {};
+  applyTheme(R.color || '#15803d');
+  document.title = (R.name || 'Restaurant') + ' menu';
+  $('rn').textContent = R.name || 'Restaurant';
+  tableNo = t.data.number;
+  updateWaiterBtnState(hasActiveWaiterCall(tableNo));
+
+  if(R.wifi_name || R.wifi_qr){
+    const wb = $('wifi_btn');
+    if(wb){
+      wb.classList.remove('hidden');
+      wb.classList.add('flex');
+    }
+  }
+
+  if(R.allow_notes === false){
+    $('note').classList.add('hidden');
+  }
+
+  items=m.data; cats=['All','Offers','🌶️ Spicy','🥦 Veg','🔥 Popular',...new Set(items.map(i=>i.category))];
+  loadCartState();
+  if($('note')) $('note').addEventListener('input', saveCartState);
+  applyLang();
+  await checkActiveOrder();
+
+  try {
+    db.channel('cust_order_channel').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async () => {
+      await checkActiveOrder();
+    }).subscribe();
+  } catch(e){}
+
+  render();
+}
+
+let isFiltering = false;
+function setCat(i, e){
+  if(cur === cats[i] || isFiltering) return;
+  cur = cats[i];
+  isFiltering = true;
+  renderCats();
+  if(e && e.currentTarget){
+    try {
+      e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    } catch(err){}
+  }
+  const el = $('list');
+  if(el){
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(6px)';
+    setTimeout(() => {
+      renderItems();
+      requestAnimationFrame(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+        setTimeout(() => { isFiltering = false; }, 150);
+      });
+    }, 75);
+  } else {
+    renderItems();
+    isFiltering = false;
+  }
+}
+
+const hasOffer=i=>i.offer_price!=null&&+i.offer_price<+i.price;
+const cleanName = s => String(s || '').split('/')[0].trim();
+
+function getItemName(key){
+  if(cartMeta[key] && cartMeta[key].name) return cleanName(cartMeta[key].name);
+  const baseId = String(key).split('__')[0];
+  const item = items.find(x => x.id == baseId);
+  return item ? cleanName(item.name) : 'Item';
+}
+
+function getItemPrice(key){
+  if(cartMeta[key] && cartMeta[key].price != null) return +cartMeta[key].price;
+  const baseId = String(key).split('__')[0];
+  const item = items.find(x => x.id == baseId);
+  return item ? pr(item) : 0;
+}
+
+let currentCustomizerItem = null;
+let selectedVariants = {}; // { [variantIdx]: qty }
+let selectedAddons = {};   // { [addonIdx]: qty }
+let customizerDishQty = 1;
+
+function openCustomizer(id, defaultVariantIdx = 0){
+  const item = items.find(x => x.id == id);
+  if(!item) return;
+  currentCustomizerItem = item;
+  selectedVariants = {};
+  selectedAddons = {};
+  customizerDishQty = 1;
+
+  $('cz_title').textContent = item.name;
+  $('cz_desc').textContent = item.description || '';
+
+  const hasVars = Array.isArray(item.variants) && item.variants.length > 0;
+  const hasAdds = Array.isArray(item.addons) && item.addons.length > 0;
+
+  const dishQtyRow = $('cz_dish_qty_row');
+  if(hasVars){
+    if(dishQtyRow) dishQtyRow.classList.add('hidden');
+  } else {
+    if(dishQtyRow) dishQtyRow.classList.remove('hidden');
+    if($('cz_dish_qty')) $('cz_dish_qty').textContent = '1';
+    if($('cz_qty_lbl')) $('cz_qty_lbl').textContent = curLang === 'bn' ? 'খাবারের পরিমাণ' : 'Quantity';
+    if($('cz_qty_sub')) $('cz_qty_sub').textContent = curLang === 'bn' ? 'কয়টি প্লেট বা আইটেম নেবেন?' : 'How many plates / servings?';
+  }
+
+  if($('cz_tot_lbl')) $('cz_tot_lbl').textContent = curLang === 'bn' ? 'মোট দাম' : 'Total Price';
+
+  let html = '';
+
+  if(hasVars){
+    html += `<div>
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-xs font-bold text-slate-800 uppercase tracking-wider">${curLang === 'bn' ? 'সাইজ ও পরিমাণ নির্বাচন করুন' : 'Select Portions & Quantity'}</label>
+        <span class="text-[10px] text-slate-400 font-semibold">${curLang === 'bn' ? 'প্লাস-মাইনাস দিয়ে পরিমাণ সেট করুন' : 'Use +/- to set servings'}</span>
+      </div>
+      <div id="cz_variants_container" class="space-y-1.5">
+        ${renderCustomizerVariants()}
+      </div>
+    </div>`;
+  }
+
+  if(hasAdds){
+    html += `<div>
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-xs font-bold text-slate-800 uppercase tracking-wider">${curLang === 'bn' ? 'অতিরিক্ত আইটেম ও টপিংস' : 'Add-ons & Extras'}</label>
+        <span class="text-[10px] text-slate-400 font-semibold">${curLang === 'bn' ? 'পরিমাণ বাড়াতে বা কমাতে পারেন' : 'Adjust quantity as needed'}</span>
+      </div>
+      <div id="cz_addons_container" class="space-y-1.5">
+        ${renderCustomizerAddons()}
+      </div>
+    </div>`;
+  }
+
+  $('cz_content').innerHTML = html;
+  calcCustomizerTotal();
+
+  const s = $('customizer_sheet'), p = $('customizer_panel');
+  s.classList.remove('hidden', 'pointer-events-none');
+  s.classList.add('flex');
+  requestAnimationFrame(() => {
+    s.classList.remove('opacity-0');
+    s.classList.add('opacity-100');
+    if(p){
+      p.classList.remove('translate-y-full');
+      p.classList.add('translate-y-0');
+    }
+  });
+}
+
+function renderCustomizerVariants(){
+  const item = currentCustomizerItem;
+  if(!item || !Array.isArray(item.variants) || !item.variants.length) return '';
+  return item.variants.map((v, idx) => {
+    const qty = selectedVariants[idx] || 0;
+    const isSelected = qty > 0;
+    const vTitle = cleanName(v.name);
+    return `
+      <div class="flex items-center justify-between p-2.5 rounded-xl border ${isSelected ? 'border-brand bg-brand/5 shadow-2xs' : 'border-slate-200 hover:border-slate-300'} transition select-none">
+        <div class="min-w-0 pr-2">
+          <span class="text-xs sm:text-sm font-semibold text-slate-800 block truncate">${esc(vTitle)}</span>
+          <span class="text-xs font-bold text-brand">${tk(v.price)} each</span>
+        </div>
+        <div class="shrink-0 flex items-center gap-1.5">
+          ${isSelected ? `
+            <div class="flex items-center gap-1.5 bg-white border border-brand/40 rounded-lg p-0.5 shadow-2xs">
+              <button type="button" onclick="chgVariantQty(${idx}, -1)" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm transition">−</button>
+              <span class="w-6 text-center font-black text-xs text-brand tabular-nums">${qty}</span>
+              <button type="button" onclick="chgVariantQty(${idx}, 1)" class="w-7 h-7 rounded bg-brand hover:opacity-90 text-white flex items-center justify-center font-bold text-sm transition">+</button>
+            </div>
+          ` : `
+            <button type="button" onclick="chgVariantQty(${idx}, 1)" class="border border-brand text-brand hover:bg-brand hover:text-white rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1">
+              <span>+</span> <span>${curLang === 'bn' ? 'যোগ করুন' : 'Add'}</span>
+            </button>
+          `}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function chgVariantQty(idx, d){
+  const cur = selectedVariants[idx] || 0;
+  const next = Math.max(0, cur + d);
+  if(next <= 0) delete selectedVariants[idx];
+  else selectedVariants[idx] = next;
+
+  const container = $('cz_variants_container');
+  if(container) container.innerHTML = renderCustomizerVariants();
+  calcCustomizerTotal();
+}
+
+function renderCustomizerAddons(){
+  const item = currentCustomizerItem;
+  if(!item || !Array.isArray(item.addons) || !item.addons.length) return '';
+  return item.addons.map((a, idx) => {
+    const qty = selectedAddons[idx] || 0;
+    const isSelected = qty > 0;
+    const aTitle = cleanName(a.name);
+    return `
+      <div class="flex items-center justify-between p-2.5 rounded-xl border ${isSelected ? 'border-brand bg-brand/5 shadow-2xs' : 'border-slate-200 hover:border-slate-300'} transition select-none" id="cz_add_opt_${idx}">
+        <div class="min-w-0 pr-2">
+          <span class="text-xs sm:text-sm font-semibold text-slate-800 block truncate">${esc(aTitle)}</span>
+          <span class="text-[11px] font-bold text-slate-500">+${tk(a.price)} each</span>
+        </div>
+        <div class="shrink-0 flex items-center gap-1.5">
+          ${isSelected ? `
+            <div class="flex items-center gap-1.5 bg-white border border-brand/40 rounded-lg p-0.5 shadow-2xs">
+              <button type="button" onclick="chgAddonQty(${idx}, -1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs transition">−</button>
+              <span class="w-5 text-center font-extrabold text-xs text-brand tabular-nums">${qty}</span>
+              <button type="button" onclick="chgAddonQty(${idx}, 1)" class="w-6 h-6 rounded bg-brand hover:opacity-90 text-white flex items-center justify-center font-bold text-xs transition">+</button>
+            </div>
+          ` : `
+            <button type="button" onclick="chgAddonQty(${idx}, 1)" class="border border-brand text-brand hover:bg-brand hover:text-white rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1">
+              <span>+</span> <span>${curLang === 'bn' ? 'যোগ করুন' : 'Add'}</span>
+            </button>
+          `}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function chgAddonQty(idx, d){
+  const cur = selectedAddons[idx] || 0;
+  const next = Math.max(0, cur + d);
+  if(next <= 0) delete selectedAddons[idx];
+  else selectedAddons[idx] = next;
+
+  const container = $('cz_addons_container');
+  if(container) container.innerHTML = renderCustomizerAddons();
+  calcCustomizerTotal();
+}
+
+function chgCustomizerDishQty(d){
+  customizerDishQty = Math.max(1, customizerDishQty + d);
+  const qEl = $('cz_dish_qty');
+  if(qEl) qEl.textContent = customizerDishQty;
+  calcCustomizerTotal();
+}
+
+function calcCustomizerTotal(){
+  const item = currentCustomizerItem;
+  if(!item) return 0;
+  const hasVars = Array.isArray(item.variants) && item.variants.length > 0;
+  const hasAdds = Array.isArray(item.addons) && item.addons.length > 0;
+
+  let totalVariationsQty = 0;
+  let variationsPriceSum = 0;
+
+  if(hasVars){
+    Object.entries(selectedVariants).forEach(([idx, qty]) => {
+      if(item.variants[idx] && qty > 0){
+        totalVariationsQty += qty;
+        variationsPriceSum += (+item.variants[idx].price * qty);
+      }
+    });
+  } else {
+    totalVariationsQty = customizerDishQty;
+    variationsPriceSum = pr(item) * customizerDishQty;
+  }
+
+  let addonsPriceSum = 0;
+  if(hasAdds){
+    Object.entries(selectedAddons).forEach(([idx, qty]) => {
+      if(item.addons[idx] && qty > 0){
+        addonsPriceSum += (+item.addons[idx].price * qty);
+      }
+    });
+  }
+
+  const grandTotal = variationsPriceSum + addonsPriceSum;
+  $('cz_total_price').textContent = tk(grandTotal);
+
+  const btn = $('cz_add_btn');
+  if(totalVariationsQty <= 0){
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'pointer-events-none');
+    btn.textContent = curLang === 'bn' ? 'সাইজ নির্বাচন করুন' : 'Select a size';
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'pointer-events-none');
+    const qtyStr = totalVariationsQty > 1 ? ` (${totalVariationsQty})` : '';
+    btn.textContent = (curLang === 'bn' ? `অর্ডারে যোগ করুন${qtyStr} · ` : `Add to Order${qtyStr} · `) + tk(grandTotal);
+  }
+
+  return grandTotal;
+}
+
+function addCustomizedToCart(){
+  const item = currentCustomizerItem;
+  if(!item) return;
+  const hasVars = Array.isArray(item.variants) && item.variants.length > 0;
+  const hasAdds = Array.isArray(item.addons) && item.addons.length > 0;
+
+  let totalItemsAdded = 0;
+
+  // 1. Add selected variations (or base item)
+  if(hasVars){
+    const activeVars = Object.entries(selectedVariants).filter(([_, qty]) => qty > 0);
+    if(activeVars.length === 0) return;
+
+    activeVars.forEach(([vIdx, vQty]) => {
+      const v = item.variants[vIdx];
+      if(!v) return;
+
+      const key = `${item.id}__v${vIdx}`;
+      const finalItemName = `${cleanName(item.name)} (${cleanName(v.name)})`;
+
+      cart[key] = (cart[key] || 0) + vQty;
+      cartMeta[key] = {
+        id: item.id,
+        name: finalItemName,
+        price: +v.price
+      };
+      totalItemsAdded += vQty;
+    });
+  } else {
+    const key = String(item.id);
+    cart[key] = (cart[key] || 0) + customizerDishQty;
+    cartMeta[key] = {
+      id: item.id,
+      name: cleanName(item.name),
+      price: pr(item)
+    };
+    totalItemsAdded += customizerDishQty;
+  }
+
+  // 2. Add selected add-ons as individual line items
+  if(hasAdds){
+    Object.entries(selectedAddons).forEach(([aIdx, aQty]) => {
+      if(item.addons[aIdx] && aQty > 0){
+        const a = item.addons[aIdx];
+        const key = `${item.id}__addon_${aIdx}`;
+        cart[key] = (cart[key] || 0) + aQty;
+        cartMeta[key] = {
+          id: item.id,
+          name: cleanName(a.name),
+          price: +a.price
+        };
+        totalItemsAdded += aQty;
+      }
+    });
+  }
+
+  saveCartState();
+  closeCustomizer();
+  showToast(curLang === 'bn' ? `"${item.name}" কার্টে যোগ করা হয়েছে` : `"${item.name}" added to order`);
+  render();
+}
+
+function closeCustomizer(){
+  const s = $('customizer_sheet'), p = $('customizer_panel');
+  if(!s || s.classList.contains('hidden')) return;
+  s.classList.remove('opacity-100');
+  s.classList.add('opacity-0', 'pointer-events-none');
+  if(p){
+    p.classList.remove('translate-y-0');
+    p.classList.add('translate-y-full');
+  }
+  setTimeout(() => {
+    if(s.classList.contains('opacity-0')){
+      s.classList.add('hidden');
+      s.classList.remove('flex');
+    }
+  }, 240);
+}
+
+function ctl(i){
+  if(R.allow_orders === false) return `<span class="self-center text-xs font-semibold text-slate-400 py-1 px-2.5 bg-slate-100 rounded-md">${t('catalog_only')}</span>`;
+  const hasCustom = (Array.isArray(i.variants) && i.variants.length > 0) || (Array.isArray(i.addons) && i.addons.length > 0);
+  
+  if(hasCustom){
+    const totalQty = Object.entries(cart).filter(([k]) => k == i.id || k.startsWith(i.id + '__')).reduce((a, [_, q]) => a + q, 0);
+    if(totalQty > 0){
+      return `<button onclick="openCustomizer(${i.id})" class="self-center border border-brand bg-brand/5 text-brand rounded-md px-2.5 py-1.5 text-xs font-bold hover:bg-brand hover:text-white transition flex items-center gap-1.5 shrink-0" title="Order more">
+        <span class="w-4 h-4 rounded-full bg-brand text-white flex items-center justify-center text-[10px]">${totalQty}</span>
+        <span>${curLang === 'bn' ? 'আরও' : 'More'}</span>
+      </button>`;
+    }
+    return `<button onclick="openCustomizer(${i.id})" class="self-center border border-brand text-brand rounded-md px-3.5 py-1.5 text-xs sm:text-sm font-bold hover:bg-brand hover:text-white transition whitespace-nowrap shrink-0">${t('add')}</button>`;
+  }
+
+  const q = cart[i.id];
+  return q
+   ? `<div class="flex items-center gap-2 self-center shrink-0"><button onclick="chg(${i.id},-1)" class="w-8 h-8 rounded-md border border-slate-300 font-bold">−</button><span class="w-5 text-center font-bold">${q}</span><button onclick="chg(${i.id},1)" class="w-8 h-8 rounded-md bg-brand text-white font-bold">+</button></div>`
+   : `<button onclick="chg(${i.id},1)" class="self-center border border-brand text-brand rounded-md px-3.5 py-1.5 text-sm font-bold hover:bg-brand hover:text-white transition shrink-0">${t('add')}</button>`;
+}
+
+function renderCats(){
+  $('cats').innerHTML=cats.map((c,i)=>{
+    const isAct = c===cur;
+    const isOffer = c==='Offers';
+    return `<button onclick="setCat(${i}, event)" class="shrink-0 rounded-full px-3 py-1 text-sm font-semibold transition flex items-center gap-1.5 ${isAct ? 'bg-brand text-white shadow-xs' : (isOffer ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200/70' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}">
+      ${isOffer ? '<svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.316.492-.594.99-.877 1.488-.574 1.01-1.168 2.05-1.92 2.923a7.48 7.48 0 01-.54.567c-.249.231-.505.44-.766.634a6.95 6.95 0 00-.77.671 6.974 6.974 0 00-1.393 2.53 7.05 7.05 0 00-.28 1.94 7 7 0 0013.921 1.258 7.02 7.02 0 00-.814-3.326 6.98 6.98 0 00-2.48-2.68 6.94 6.94 0 00-.987-.514c-.394-.165-.799-.307-1.206-.425-.333-.097-.668-.184-1.002-.261-.318-.073-.637-.137-.954-.191a24.16 24.16 0 011.09-2.316c.307-.54.64-1.066.993-1.57.177-.253.364-.498.56-.732.196-.233.407-.453.633-.655a1 1 0 00.105-1.414z" clip-rule="evenodd"/></svg>' : ''}
+      <span>${esc(catLabel(c))}</span>
+    </button>`;
+  }).join('');
+}
+
+function renderItems(){
+  const show=items.filter(i=>{
+    let matchCat = true;
+    if(cur === 'All') matchCat = true;
+    else if(cur === 'Offers') matchCat = hasOffer(i);
+    else if(cur === '🌶️ Spicy'){
+      const text = ((i.name||'') + ' ' + (i.description||'')).toLowerCase();
+      matchCat = text.includes('chili') || text.includes('spicy') || text.includes('tikka') || text.includes('tehari') || text.includes('kebab');
+    } else if(cur === '🥦 Veg'){
+      const text = ((i.name||'') + ' ' + (i.description||'')).toLowerCase();
+      matchCat = text.includes('naan') || text.includes('firni') || text.includes('salad') || text.includes('daal') || text.includes('lassi') || text.includes('coffee') || text.includes('mojito') || text.includes('rice');
+    } else if(cur === '🔥 Popular'){
+      matchCat = (i.id === 1 || i.id === 5 || i.id === 8);
+    } else {
+      matchCat = (i.category === cur);
+    }
+    if(!matchCat) return false;
+    if(!searchQ) return true;
+    const q = searchQ.toLowerCase();
+    return (i.name && i.name.toLowerCase().includes(q)) || (i.description && i.description.toLowerCase().includes(q));
+  });
+
+  $('list').innerHTML=show.length?show.map(i=>{
+    const off=hasOffer(i);
+    return `<div class="bg-white border border-slate-200 rounded-md p-2.5 mb-1.5 flex gap-3">
+      ${i.image_url?`<div class="relative w-16 h-16 rounded bg-slate-100 overflow-hidden shrink-0 cursor-zoom-in" onclick="zoom(${i.id})"><img src="${esc(i.image_url)}" alt="${esc(i.name)}" loading="lazy" decoding="async" class="w-full h-full object-cover" onerror="this.parentElement.style.display='none'">${off?`<span class="absolute top-1 left-1 bg-red-600 text-white font-black text-[9px] px-1 py-0.5 rounded shadow-2xs leading-none">OFFER</span>`:''}</div>`:''}
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <p class="font-semibold leading-snug">${esc(i.name)}</p>
+          ${off&&!i.image_url?`<span class="text-[10px] font-bold bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.5 rounded leading-none">OFFER</span>`:''}
+          ${getFoodBadges(i)}
+        </div>
+        ${i.description?`<p class="text-xs text-slate-500 mt-0.5">${esc(i.description)}</p>`:''}
+        <p class="mt-1 text-sm font-bold">${off?`<s class="text-xs font-normal text-slate-400 mr-1">${tk(i.price)}</s><span class="text-brand font-bold">${tk(pr(i))}</span>`:tk(i.price)}</p>
+      </div>
+      ${ctl(i)}
+    </div>`;
+  }).join(''):(searchQ
+    ? `<div class="text-center py-12 px-4"><p class="text-2xl mb-1">🔍</p><p class="font-bold text-slate-700 text-sm">${curLang==='bn'?'কোনো খাবার মেলেনি':'No items match your search'}</p><button onclick="clearSearch()" class="mt-2 text-xs font-semibold text-brand hover:underline">${curLang==='bn'?'সার্চ পরিষ্কার করুন':'Clear search'}</button></div>`
+    : (cur==='Offers'
+      ? `<div class="text-center py-14 px-3"><div class="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-3 text-2xl shadow-2xs">🏷️</div><p class="font-bold text-slate-800 text-base">${curLang==='bn'?'বর্তমানে কোনো অফার নেই':'No active offers right now'}</p><p class="text-xs text-slate-500 mt-1">${curLang==='bn'?'অন্যান্য মেনু আইটেম দেখুন':'Check back later or browse our other delicious menu items.'}</p></div>`
+      : `<p class="text-center text-slate-500 py-10">${curLang==='bn'?'বর্তমানে কোনো খাবার পাওয়া যায়নি':'No items available right now.'}</p>`
+    )
+  );
+
+  const n=Object.values(cart).reduce((a,b)=>a+b,0);
+  if(R.allow_orders === false){
+    $('bar').classList.add('hidden');
+  } else {
+    $('bar').classList.toggle('hidden',!n);
+    $('bc').textContent=n+(n>1?(' '+t('items')):(' '+t('item')))+' · '+tk(total());
+  }
+}
+
+function render(){
+  renderCats();
+  renderItems();
+}
+
+const pr=i=>i.offer_price!=null&&+i.offer_price<+i.price?+i.offer_price:+i.price;
+const subtotal=()=>Object.entries(cart).reduce((s,[k,n])=>s+getItemPrice(k)*n,0);
+function calcDisc(c, sub){
+  if(!c || sub < (c.min_order || 0)) return 0;
+  return c.type === 'percent' ? Math.round(sub * c.value / 100) : Math.min(c.value, sub);
+}
+const discount=()=>calcDisc(appliedCoupon, subtotal());
+const total=()=>Math.max(0, subtotal() - discount());
+
+function showCpMsg(msg, color){
+  const el = $('cp_msg');
+  if(!el) return;
+  if(!msg){ el.classList.add('hidden'); el.textContent = ''; return; }
+  el.className = 'text-xs mt-1 ' + (color === 'green' ? 'text-emerald-600 font-medium' : color === 'amber' ? 'text-amber-600 font-medium' : 'text-red-600 font-medium');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+async function applyCoupon(){
+  showCpMsg('');
+  const code = ($('cp_in')?.value || '').trim().toUpperCase();
+  if(!code) return showCpMsg(curLang==='bn'?'কুপন কোড লিখুন':'Please enter a coupon code', 'red');
+  const sub = subtotal();
+  if(!sub) return showCpMsg(curLang==='bn'?'প্রথমে খাবারে আইটেম যোগ করুন':'Add items to your order first', 'red');
+
+  const {data=[], error} = await db.from('coupons').select().eq('code', code).eq('active', true);
+  if(error || !data.length) return showCpMsg(curLang==='bn'?'ভুল বা মেয়াদোত্তীর্ণ কুপন':'Invalid or expired coupon code', 'red');
+  const c = data[0];
+  if(sub < (c.min_order || 0)) return showCpMsg((curLang==='bn'?'সর্বনিম্ন অর্ডারের পরিমাণ ':'Minimum order for this coupon is ') + tk(c.min_order), 'red');
+
+  appliedCoupon = c;
+  showCpMsg(curLang==='bn'?'কুপন সফলভাবে যুক্ত হয়েছে!':'Coupon applied successfully!', 'green');
+  saveCartState();
+  drawCart();
+  render();
+}
+
+function removeCoupon(){
+  appliedCoupon = null;
+  if($('cp_in')) $('cp_in').value = '';
+  showCpMsg('');
+  saveCartState();
+  drawCart();
+  render();
+}
+
+function chgKey(key, d){
+  cart[key] = (cart[key] || 0) + d;
+  if(cart[key] <= 0){
+    delete cart[key];
+    delete cartMeta[key];
+  }
+  if(appliedCoupon){
+    const sub = subtotal();
+    if(sub < (appliedCoupon.min_order || 0)){
+      showCpMsg((curLang==='bn'?'কুপন বাতিল: সর্বনিম্ন অর্ডার ':'Coupon removed: min order is ') + tk(appliedCoupon.min_order), 'amber');
+      appliedCoupon = null;
+      if($('cp_in')) $('cp_in').value = '';
+    }
+  }
+  saveCartState();
+  render();
+  if(!$('sheet').classList.contains('hidden')) drawCart();
+  if(zid) zdraw();
+}
+
+function chg(id, d){
+  chgKey(id, d);
+}
+
+function drawCart(){
+  const keys = Object.keys(cart);
+  if(!keys.length) return closeCart();
+  $('cl').innerHTML = keys.map(k => {
+    const name = getItemName(k);
+    const price = getItemPrice(k);
+    const baseId = String(k).split('__')[0];
+    const isAddon = String(k).includes('__addon_');
+    const item = items.find(x => x.id == baseId);
+    const hasCustom = item && ((Array.isArray(item.variants) && item.variants.length > 0) || (Array.isArray(item.addons) && item.addons.length > 0));
+
+    return `<div class="py-2.5 border-b border-slate-100 last:border-0 ${isAddon ? 'pl-3 border-l-2 border-l-brand/35 bg-slate-50/60 rounded-r-lg my-1' : ''}">
+      <div class="flex justify-between items-center">
+        <div class="min-w-0 pr-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <p class="font-semibold text-sm text-slate-800 leading-snug">${esc(name)}</p>
+            ${isAddon ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200/60 leading-none">${curLang === 'bn' ? 'টপিংস / এক্সট্রা' : 'Add-on'}</span>` : ''}
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">${tk(price)} each</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="chgKey('${esc(k)}', -1)" class="w-7 h-7 rounded-md border border-slate-300 font-bold hover:bg-slate-50">−</button>
+          <span class="w-5 text-center font-bold text-sm">${cart[k]}</span>
+          <button onclick="chgKey('${esc(k)}', 1)" class="w-7 h-7 rounded-md bg-brand text-white font-bold hover:opacity-95">+</button>
+        </div>
+      </div>
+      ${(!isAddon && hasCustom) ? `
+        <div class="mt-1 flex items-center gap-2">
+          <button type="button" onclick="closeCart(); openCustomizer(${baseId})" class="text-[11px] font-semibold text-brand hover:underline inline-flex items-center gap-1">
+            <span>+</span> <span>${curLang === 'bn' ? 'আরেকটি সাইজ বা টপিংস যোগ করুন' : 'Add another size / toppings'}</span>
+          </button>
+        </div>
+      ` : ''}
+    </div>`;
+  }).join('');
+
+  const sub = subtotal(), disc = discount(), tot = total();
+  $('c_sub').textContent = tk(sub);
+  if(appliedCoupon && disc > 0){
+    $('c_disc_row').classList.remove('hidden');
+    $('c_disc_row').classList.add('flex');
+    $('c_disc').textContent = '- ' + tk(disc);
+    $('cp_input_row').classList.add('hidden');
+    $('cp_applied_row').classList.remove('hidden');
+    $('cp_applied_row').classList.add('flex');
+    $('cp_code_lbl').textContent = appliedCoupon.code;
+    $('cp_disc_lbl').textContent = tk(disc);
+  } else {
+    $('c_disc_row').classList.add('hidden');
+    $('c_disc_row').classList.remove('flex');
+    $('cp_input_row').classList.remove('hidden');
+    $('cp_applied_row').classList.add('hidden');
+    $('cp_applied_row').classList.remove('flex');
+  }
+  $('ct').textContent = tk(tot);
+}
+function openCart(){
+  drawCart();
+  const s=$('sheet'), p=$('sheet_panel');
+  s.classList.remove('hidden','pointer-events-none');
+  s.classList.add('flex');
+  requestAnimationFrame(()=>{
+    s.classList.remove('opacity-0');
+    s.classList.add('opacity-100');
+    if(p){
+      p.classList.remove('translate-y-full');
+      p.classList.add('translate-y-0');
+    }
+  });
+}
+function closeCart(){
+  const s=$('sheet'), p=$('sheet_panel');
+  if(!s || s.classList.contains('hidden')) return;
+  s.classList.remove('opacity-100');
+  s.classList.add('opacity-0','pointer-events-none');
+  if(p){
+    p.classList.remove('translate-y-0');
+    p.classList.add('translate-y-full');
+  }
+  setTimeout(()=>{
+    if(s.classList.contains('opacity-0')){
+      s.classList.add('hidden');
+      s.classList.remove('flex');
+    }
+  },240);
+}
+
+async function place(){
+  const id=crypto.randomUUID(),
+    sub = subtotal(), disc = discount(), tot = total(),
+    cpCode = appliedCoupon ? appliedCoupon.code : null,
+    lines=Object.entries(cart).map(([k,n])=>({order_id:id,name:getItemName(k),price:getItemPrice(k),qty:n}));
+  $('pb').disabled=true; $('pb').textContent=curLang==='bn'?'অর্ডার পাঠানো হচ্ছে...':'Sending...';
+  let e=(await db.from('orders').insert({id,table_id:tid,total:tot,discount:disc,coupon:cpCode,note:$('note').value.trim()||null})).error;
+  if(!e) e=(await db.from('order_items').insert(lines)).error;
+  if(e){
+    $('pb').disabled=false;
+    $('pb').textContent=t('place_order');
+    return alert(curLang==='bn'?'অর্ডার পাঠানো যায়নি। আবার চেষ্টা করুন বা ওয়েটারকে বলুন।':'Order not sent. Please try again or call the waiter.');
+  }
+  cart={}; cartMeta={}; appliedCoupon=null; if($('note')) $('note').value=''; clearCartState(); closeCart();
+  localStorage.setItem('qrmenu_active_order_id', id);
+  await checkActiveOrder();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast(curLang === 'bn' ? 'অর্ডার কিচেনে পাঠানো হয়েছে!' : 'Order sent to the kitchen!');
+  render();
+  $('pb').disabled=false;
+  $('pb').textContent=t('place_order');
+}
+function render2(){cur='All';cats=['All','Offers','🌶️ Spicy','🥦 Veg','🔥 Popular',...new Set(items.map(i=>i.category))];render()}
+
+init().catch(e=>msg('Could not load the menu',e.message));
+</script>
+</body>
+</html>

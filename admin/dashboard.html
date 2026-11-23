@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="assets/tw.js"></script>
+<link rel="stylesheet" href="assets/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../demo-data.js"></script>
+<script src="../config.js"></script>
+</head>
+<body class="bg-neutral-100 text-ink text-[13px] font-sans">
+<main id="main" class="p-3 pb-8 lg:p-6"></main>
+<script src="assets/app.js"></script>
+<script src="assets/billing.js"></script>
+<script src="assets/charts.js"></script>
+<script>
+async function vDash(){
+  CH.length=0;
+  const t0=sd(new Date()),y0=ad(t0,-1),w0=ad(t0,-6),e0=ad(t0,1);
+  const [a,b,c,d,e5]=await Promise.all([
+    db.from('invoices').select().gte('created_at',iso(w0)),
+    db.from('orders').select('*,tables(number),order_items(*)').in('status',['new','preparing','served']).order('created_at'),
+    db.from('tables').select(),
+    db.from('order_items').select('name,qty,orders!inner(status,created_at)').eq('orders.status','paid').gte('orders.created_at',iso(w0)),
+    db.from('menu_items').select('id')]);
+  const inv=a.data||[],act=b.data||[],tbs=(c.data||[]).sort((x,y)=>x.number.localeCompare(y.number,undefined,{numeric:true})),
+    td=inv.filter(i=>inR(i.created_at,t0,e0)),yd=inv.filter(i=>inR(i.created_at,y0,t0)),sum=x=>x.reduce((s,i)=>s+Number(i.total),0);
+  ACT=act.length;renderNav();
+  G={};act.forEach(o=>(G[o.table_id]=G[o.table_id]||[]).push(o));
+  const ORD=['new','preparing','served'],cnt=s=>act.filter(o=>o.status===s).length,parts=ORD.filter(cnt).map(s=>cnt(s)+' '+s).join(' · ')||'No open orders',
+    top=topOf(d.data||[],6),mq=Math.max(1,...top.map(x=>x.q)),busy={};
+  act.forEach(o=>{const s=busy[o.table_id];if(!s||ORD.indexOf(o.status)<ORD.indexOf(s))busy[o.table_id]=o.status});
+  const TS={new:['New order','bg-amber-50 border-amber-300'],preparing:['Preparing','bg-orange-50 border-orange-300'],served:['Eating','bg-sky-50 border-sky-300']},
+    COLS='md:grid-cols-[84px_minmax(0,1fr)_72px_auto] 2xl:grid-cols-[96px_minmax(0,1fr)_80px_96px_auto]',[wl,wv]=dayVals(inv,w0,e0);
+  CH.push(['c1',cfgLine(wl,wv)]);
+  const row=o=>{
+    const n=NEXT[o.status];
+    return `<div class="p-3 sm:px-4 sm:py-3 border-t border-slate-100 flex flex-col gap-2 md:grid ${COLS} md:gap-3 md:items-center">
+      <div class="flex justify-between items-center md:block">
+        <div class="min-w-0">
+          <p class="font-semibold text-sm truncate">Table ${esc(o.tables?.number||'?')}</p>
+          <p class="text-xs text-slate-400">${tm(o.created_at)} · #${o.no}</p>
+        </div>
+        <span class="md:hidden shrink-0">${pill(o.status)}</span>
+        <span class="hidden md:inline-block 2xl:hidden mt-1">${pill(o.status)}</span>
+      </div>
+      <div class="min-w-0">
+        <p class="text-sm md:truncate break-words">${o.order_items.map(i=>i.qty+' × '+esc(i.name)).join(', ')}</p>
+        ${o.note?`<p class="text-xs text-amber-700 break-words mt-0.5">Note: ${esc(o.note)}</p>`:''}
+        ${o.coupon?`<p class="text-xs text-emerald-700 font-medium break-words mt-0.5">Coupon: ${esc(o.coupon)} (-${tk(o.discount||0)})</p>`:''}
+      </div>
+      <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-50 md:border-0 md:pt-0 md:contents">
+        <p class="font-semibold text-sm shrink-0">${tk(o.total)}</p>
+        <div class="hidden 2xl:block">${pill(o.status)}</div>
+        <div class="flex items-center gap-2 md:justify-end shrink-0">
+          ${n[0]?`<button onclick="setSt('${o.id}','${n[0]}')" class="btn2 !py-1 !px-2.5 sm:!py-1.5 sm:!px-3 text-xs sm:text-[13px]">${n[1]}</button><button onclick="cancelO('${o.id}')" class="text-xs sm:text-sm font-semibold text-red-600 px-1 py-1">Cancel</button>`:`<button onclick="bill('${o.table_id}')" class="btn !py-1 !px-2.5 sm:!py-1.5 sm:!px-3 text-xs sm:text-[13px]">Cash received</button>`}
+        </div>
+      </div>
+    </div>`;
+  };
+  const hr=new Date().getHours(),steps=[[!!(R.address||R.phone),'Add restaurant details','settings'],[tbs.length>0,'Add tables and print QR codes','tables'],[(e5.data||[]).length>0,'Add food to the menu','menu']],
+    todo=steps.some(x=>!x[0])?`<div class="box p-3 sm:p-4 mb-4 sm:mb-5"><b>Get started</b><div class="mt-2 grid sm:grid-cols-3 gap-2">${steps.map(([ok,t,p],i)=>`<button onclick="go('${p}')" class="text-left border border-neutral-200 rounded-md p-2.5 hover:bg-neutral-50 flex gap-2.5 items-center min-w-0"><span class="w-5 h-5 rounded-full grid place-items-center text-[11px] shrink-0 ${ok?'bg-brand text-white':'border border-neutral-300 text-neutral-500'}">${ok?'✓':i+1}</span><span class="text-xs sm:text-sm truncate">${t}</span></button>`).join('')}</div></div>`:'';
+  const dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  $('main').innerHTML=`<div class="flex items-center justify-between text-xs text-neutral-500 mb-3 lg:hidden"><span class="font-medium">${dateStr}</span></div>`+head('Dashboard<span class="text-xs font-normal text-neutral-400 ml-3">'+dateStr+'</span>')+todo+`
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-4 sm:mb-5">${st("Today's sales",tk(sum(td)),dl(sum(td),sum(yd),'yesterday'))}${st('Paid bills',td.length,dl(td.length,yd.length,'yesterday'))}${st('Active orders',act.length,`<span class="text-slate-500 truncate block" title="${esc(parts)}">${parts}</span>`)}${st('Average bill',tk(td.length?sum(td)/td.length:0),`<span class="text-slate-500 truncate block">${inv.length} bills this week</span>`)}</div>
+  <div class="grid lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5"><div class="box p-3 sm:p-4 lg:col-span-2">${ct('Sales, last 7 days')}<div class="relative h-56 sm:h-60"><canvas id="c1"></canvas></div></div>
+  <div class="box p-3 sm:p-4">${ct('Tables')}${tbs.length?`<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 gap-2 max-h-[260px] overflow-y-auto">${tbs.map(t=>{const s=busy[t.id],x=TS[s];return `<button ${s?`onclick="go('orders')"`:''} class="rounded-lg border px-2 py-2 text-center transition min-w-0 ${x?x[1]:'bg-white border-slate-200'}"><p class="font-bold text-sm truncate">${esc(t.number)}</p><p class="text-[11px] leading-tight truncate ${x?'text-slate-700 font-medium':'text-slate-400'}">${x?x[0]:'Free'}</p></button>`}).join('')}</div><p class="text-xs sm:text-sm text-slate-500 mt-3">${Object.keys(busy).length} of ${tbs.length} tables busy</p>`:empty('No tables yet','Add tables in Tables & QR.')}</div></div>
+  <div class="grid lg:grid-cols-3 gap-3 sm:gap-4"><div class="box lg:col-span-2 overflow-hidden"><div class="p-3 sm:p-4 pb-2 sm:pb-3">${ct('Live orders','','<button onclick="go(\'orders\')" class="lk">View all</button>')}</div>
+   <div class="hidden md:grid ${COLS} gap-3 px-4 py-2 bg-neutral-50 text-xs font-medium text-neutral-500"><span>Table</span><span>Items</span><span>Total</span><span class="hidden 2xl:block">Status</span><span></span></div>
+   ${act.slice(0,8).map(row).join('')||empty('No open orders','New orders will show here.')}</div>
+  <div class="box p-3 sm:p-4">${ct('Best sellers','7 days')}${top.map(x=>`<div class="mb-3.5"><div class="flex justify-between text-sm gap-2"><span class="truncate min-w-0">${esc(x.n)}</span><span class="text-slate-500 shrink-0 text-xs sm:text-sm">${x.q} sold</span></div><div class="h-1.5 bg-slate-100 rounded mt-1.5 overflow-hidden"><div class="h-1.5 bg-brand rounded" style="width:${x.q/mq*100}%"></div></div></div>`).join('')||empty('No sales yet','')}</div></div>`;
+  drawCharts();
+}
+init({page:'dash',title:'Dashboard',view:vDash,live:true});
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign In · Restaurant Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['DM Sans', 'system-ui', 'sans-serif']
+      },
+      colors: {
+        brand: 'var(--brand, #15803d)',
+        'brand-hover': 'var(--brand-hover, #166534)',
+        'brand-light': 'var(--brand-light, rgba(21, 128, 61, 0.08))'
+      }
+    }
+  }
+};
+</script>
+<style>
+:root {
+  --brand: #15803d;
+  --brand-hover: #166534;
+  --brand-light: rgba(21, 128, 61, 0.08);
+}
+.bg-brand { background-color: var(--brand) !important; }
+button.bg-brand:hover, a.bg-brand:hover { background-color: var(--brand-hover) !important; }
+.text-brand { color: var(--brand) !important; }
+.border-brand { border-color: var(--brand) !important; }
+.hover\:bg-brand:hover { background-color: var(--brand-hover) !important; border-color: var(--brand-hover) !important; color: #ffffff !important; }
+.hover\:bg-brand-hover:hover { background-color: var(--brand-hover) !important; }
+.hover\:text-white:hover { color: #ffffff !important; }
+.focus\:border-brand:focus { border-color: var(--brand) !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../demo-data.js"></script>
+<script src="../config.js"></script>
+</head>
+<body class="min-h-screen bg-neutral-100 flex items-center justify-center p-4 sm:p-6 text-slate-800 antialiased font-sans">
+
+<!-- Main Login Container -->
+<div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden grid md:grid-cols-12 min-h-[520px]">
+
+  <!-- Left Column: Visual Showcase -->
+  <div class="hidden md:flex md:col-span-5 relative bg-slate-900 text-white p-8 flex-col justify-between overflow-hidden">
+    <!-- Subtle Background Image with Gradient Overlay -->
+    <div class="absolute inset-0">
+      <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80" alt="Restaurant Ambiance" class="w-full h-full object-cover opacity-35 filter brightness-90">
+      <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/80 to-slate-900/40"></div>
+    </div>
+
+    <!-- Header Logo & Name -->
+    <div class="relative z-10 flex items-center gap-3">
+      <div id="res_logo" class="w-9 h-9 rounded-lg bg-brand text-white flex items-center justify-center font-bold text-sm shadow-md shrink-0">
+        R
+      </div>
+      <div class="min-w-0">
+        <span id="res_name" class="font-bold text-sm text-white tracking-tight truncate block">Restaurant</span>
+        <span id="res_tagline" class="text-[11px] text-slate-300 font-normal truncate block">Management Portal</span>
+      </div>
+    </div>
+
+    <!-- Brand Statement / Philosophy -->
+    <div class="relative z-10 my-auto py-10 space-y-3">
+      <p class="text-xl lg:text-2xl font-bold text-white leading-snug tracking-tight">
+        Delivering seamless dining and effortless service every day.
+      </p>
+      <p class="text-xs text-slate-300 leading-relaxed font-normal">
+        Real-time order management, dynamic QR tables, and comprehensive revenue analytics.
+      </p>
+    </div>
+
+    <!-- Footer Back Link -->
+    <div class="relative z-10 pt-4 border-t border-white/10">
+      <a href="../index.html" class="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white transition font-medium">
+        <span>← Back to website</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Right Column: Clean Authentication Form -->
+  <div class="col-span-12 md:col-span-7 p-7 sm:p-10 lg:p-12 flex flex-col justify-center bg-white">
+    <div class="max-w-sm w-full mx-auto space-y-6">
+
+      <!-- Header -->
+      <div class="space-y-1">
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Sign in to your account</h1>
+        <p class="text-xs sm:text-sm text-slate-500">Welcome back. Enter your credentials to continue.</p>
+      </div>
+
+      <!-- Error Notification -->
+      <div id="le" class="hidden p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
+        <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span id="le_text">Invalid email or password.</span>
+      </div>
+
+      <!-- Authentication Form -->
+      <form onsubmit="return signin(event)" class="space-y-4">
+        <!-- Email Input -->
+        <div class="space-y-1.5">
+          <label for="em" class="block text-xs font-semibold text-slate-700">Email Address</label>
+          <input id="em" type="email" placeholder="name@restaurant.com" required autocomplete="username" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition font-normal">
+        </div>
+
+        <!-- Password Input -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label for="pw" class="block text-xs font-semibold text-slate-700">Password</label>
+          </div>
+          <div class="relative">
+            <input id="pw" type="password" placeholder="••••••••" required autocomplete="current-password" class="w-full px-3.5 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition font-normal">
+            <button type="button" onclick="togglePw()" aria-label="Toggle password visibility" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition">
+              <svg id="eye_icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Demo Helper (visible only when DEMO = true) -->
+        <div id="dh" class="hidden text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2.5 flex items-center justify-between">
+          <span>Demo: <b class="text-slate-700 font-mono">admin@demo.com</b></span>
+          <button type="button" onclick="fillDemo()" class="text-brand font-semibold hover:underline">
+            Auto-fill
+          </button>
+        </div>
+
+        <!-- Action Button -->
+        <button id="sb_btn" type="submit" class="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm transition active:scale-[0.99] flex items-center justify-center gap-2 shadow-xs">
+          <span>Sign In</span>
+        </button>
+      </form>
+
+      <!-- Security / Assistance Footer -->
+      <div class="pt-3 text-center border-t border-slate-100">
+        <p class="text-[11px] text-slate-400 font-normal">
+          Authorized personnel only. Secure 256-bit encrypted connection.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// Show demo quickfill if in DEMO mode
+if (typeof DEMO !== 'undefined' && DEMO) {
+  $('dh').classList.remove('hidden');
+}
+
+// Redirect if already authenticated
+db.auth.getSession().then(({ data }) => {
+  if (data?.session) location.replace('dashboard.html');
+});
+
+// Load dynamic restaurant branding
+async function loadBrand(){
+  try {
+    const { data: R } = await db.from('restaurant').select().eq('id', 1).single();
+    if (R) {
+      if (R.name) {
+        $('res_name').textContent = R.name;
+        $('res_logo').textContent = R.name[0] || 'R';
+        document.title = 'Sign In · ' + R.name;
+      }
+      if (R.tagline) {
+        $('res_tagline').textContent = R.tagline;
+      }
+      if (R.color) {
+        document.documentElement.style.setProperty('--brand', R.color);
+        $('res_logo').style.backgroundColor = R.color;
+      }
+    }
+  } catch(e) {}
+}
+loadBrand();
+
+function togglePw(){
+  const p = $('pw');
+  const eye = $('eye_icon');
+  if (p.type === 'password') {
+    p.type = 'text';
+    eye.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>`;
+  } else {
+    p.type = 'password';
+    eye.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+  }
+}
+
+function fillDemo(){
+  $('em').value = 'admin@demo.com';
+  $('pw').value = 'admin123';
+  $('sb_btn').focus();
+}
+
+async function signin(e){
+  e.preventDefault();
+  const btn = $('sb_btn');
+  const errBox = $('le');
+  const errText = $('le_text');
+  errBox.classList.add('hidden');
+  btn.disabled = true;
+  btn.innerHTML = `<span>Signing in...</span>`;
+
+  try {
+    const { error } = await db.auth.signInWithPassword({
+      email: $('em').value.trim(),
+      password: $('pw').value
+    });
+    if (error) {
+      errText.textContent = 'Invalid email or password. Please try again.';
+      errBox.classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerHTML = `<span>Sign In</span>`;
+    } else {
+      location.href = 'dashboard.html';
+    }
+  } catch(ex) {
+    errText.textContent = ex.message || 'Error occurred while signing in.';
+    errBox.classList.remove('hidden');
+    btn.disabled = false;
+    btn.innerHTML = `<span>Sign In</span>`;
+  }
+  return false;
+}
+</script>
+</body>
+</html>
