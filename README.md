@@ -24,6 +24,6 @@ Built with lightweight vanilla JS, Tailwind CSS, and Supabase (with built-in off
 ---
 
 ## 🚀 Live Demo
-- **Customer Showcase:** [https://websmartbd.github.io/dineqr/](https://websmartbd.github.io/dineqr/)
-- **Table QR Menu:** [https://websmartbd.github.io/dineqr/menu.html?table=1](https://websmartbd.github.io/dineqr/menu.html?table=1)
-- **Admin Dashboard:** [https://websmartbd.github.io/dineqr/admin/](https://websmartbd.github.io/dineqr/admin/)
+- **Customer Showcase:** [https://qresto.asf.run//](https://qresto.asf.run/)
+- **Table QR Menu:** [https://qresto.asf.run/menu.html?table=1](https://qresto.asf.run/menu.html?table=1)
+- **Admin Dashboard:** [https://qresto.asf.run/admin/](https://qresto.asf.run/admin/)
