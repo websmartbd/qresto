@@ -17,17 +17,35 @@
 <script src="assets/app.js"></script>
 <script src="assets/billing.js"></script>
 <script>
-let OF='active', dataAllOrders=[];
+let OF='active', dataAllOrders=[], dbWaiterCalls=[];
 const FL={active:'Active orders',completed:'Completed',cancelled:'Cancelled'},OG='grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
 let orderBc;
 try { orderBc = new BroadcastChannel('qrmenu_demo_v2'); } catch(e){}
 
-function getWaiterCalls(){
+function getLocalWaiterCalls(){
   try{ return JSON.parse(localStorage.getItem('qrmenu_waiter_calls')||'[]'); }catch(e){ return []; }
 }
-function dismissWaiterCall(id, table){
+function getWaiterCalls(){
+  const local = getLocalWaiterCalls();
+  const dbCalls = dbWaiterCalls.map(c => ({
+    id: c.id,
+    table: c.table_no,
+    req: c.request,
+    time: c.created_at ? new Date(c.created_at).getTime() : Date.now()
+  }));
+  const merged = [...dbCalls, ...local];
+  const map = new Map();
+  for(const c of merged){
+    const key = String(c.table || '');
+    if(!map.has(key) || (c.time || 0) > (map.get(key).time || 0)){
+      map.set(key, c);
+    }
+  }
+  return Array.from(map.values()).sort((a,b) => (b.time||0) - (a.time||0));
+}
+async function dismissWaiterCall(id, table){
   const tblStr = String(table || '');
-  let calls = getWaiterCalls();
+  let calls = getLocalWaiterCalls();
   const c = calls.find(x => x.id === id || (tblStr && String(x.table) === tblStr));
   const dismissedTbl = tblStr || (c ? String(c.table) : '');
   calls = calls.filter(x => x.id !== id && (dismissedTbl ? String(x.table) !== dismissedTbl : true));
@@ -35,6 +53,11 @@ function dismissWaiterCall(id, table){
   try {
     if(orderBc) orderBc.postMessage({ t: 'waiter_dismiss', id: id, table: dismissedTbl });
   } catch(e){}
+  try {
+    await db.from('waiter_calls').update({ status: 'resolved' }).eq('id', id);
+    if(dismissedTbl) await db.from('waiter_calls').update({ status: 'resolved' }).eq('table_no', dismissedTbl).eq('status', 'pending');
+  } catch(e){}
+  dbWaiterCalls = dbWaiterCalls.filter(x => x.id !== id && (dismissedTbl ? String(x.table_no) !== dismissedTbl : true));
   vOrders();
 }
 function renderWaiterBanner(){
@@ -161,6 +184,10 @@ window.renderSoundBtn = () => {
 };
 
 async function vOrders(){
+  try {
+    const { data: wc = [] } = await db.from('waiter_calls').select().eq('status', 'pending').order('created_at', { ascending: false });
+    dbWaiterCalls = wc || [];
+  } catch(e){}
   const sel=`<div class="flex items-center gap-2 w-full lg:w-auto">
     <button type="button" id="snd_btn" onclick="toggleSound()" class="btn2 !py-1.5 !px-2.5 flex items-center gap-1.5 text-xs font-semibold shrink-0" title="Toggle audio notification">
       <span>${soundEnabled ? '🔔 Sound ON' : '🔕 Muted'}</span>
@@ -300,6 +327,15 @@ if(orderBc){
 window.addEventListener('storage', e => {
   if (e.key === 'qrmenu_waiter_calls') vOrders();
 });
+try {
+  db.channel('admin_wc_channel').on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls' }, p => {
+    if (p.eventType === 'INSERT' && p.new?.status === 'pending') {
+      beep('call');
+      toast('🔔 Waiter called from Table ' + p.new.table_no);
+    }
+    vOrders();
+  }).subscribe();
+} catch(e){}
 init({page:'orders',title:'Orders',view:vOrders,live:true});
 </script>
 </body>

@@ -80,6 +80,14 @@ async function addTable(){const v=$('tn1').value.trim();if(!v)return;const {erro
 async function delTable(id){
   const t = T.find(x => x.id === id);
   const num = t ? t.number : id;
+  const { data: openOrders = [] } = await db.from('orders').select('id').eq('table_id', id).in('status', ['new', 'preparing', 'served']);
+  if (openOrders.length > 0) {
+    return alertDialog({
+      title: 'Cannot Delete Table',
+      message: `Table ${esc(num)} currently has ${openOrders.length} active order(s). Please serve, bill, or cancel them before deleting this table.`,
+      type: 'error'
+    });
+  }
   const ok = await confirmDialog({
     title: 'Delete Table',
     message: 'Its printed QR code will stop working immediately.',
@@ -99,7 +107,15 @@ async function delTable(id){
   }
 }
 function printQR(ids){
-  $('inv').innerHTML=`<div class="qs">${ids.map(id=>{const t=T.find(x=>x.id===id);return `<div class="qc"><b style="font-size:16px">${esc(R.name)}</b><br><span style="font-size:20px;font-weight:800">Table ${esc(t.number)}</span><img src="${$('q'+id).querySelector('canvas').toDataURL()}"><div style="font-size:12px">Scan to see menu and order</div></div>`}).join('')}</div>`;
+  $('inv').innerHTML=`<div class="qs">${ids.map(id=>{
+    const t=T.find(x=>x.id===id);
+    if(!t) return '';
+    const qEl=$('q'+id);
+    const cvs=qEl?qEl.querySelector('canvas'):null;
+    const img=qEl?qEl.querySelector('img'):null;
+    const src=cvs?cvs.toDataURL():(img?img.src:'');
+    return `<div class="qc"><b style="font-size:16px">${esc(R.name)}</b><br><span style="font-size:20px;font-weight:800">Table ${esc(t.number)}</span>${src?`<img src="${src}">`:''}<div style="font-size:12px">Scan to see menu and order</div></div>`;
+  }).join('')}</div>`;
   setTimeout(()=>print(),150);
 }
 init({page:'tables',title:'Tables & QR',view:vTables});

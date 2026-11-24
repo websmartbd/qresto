@@ -1742,5 +1742,6 @@ const DEMO_DATA = {
    "min_order": 500,
    "active": false
   }
- ]
+ ],
+ "waiter_calls": []
 };

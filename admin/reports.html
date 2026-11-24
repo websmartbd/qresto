@@ -35,9 +35,9 @@ async function vReport(){
   CH.length=0;
   const [f,e]=rangeOf(),len=Math.round((e-f)/864e5),pf=ad(f,-len);
   const [a,b,c]=await Promise.all([
-    db.from('invoices').select().gte('created_at',iso(pf)).order('created_at',{ascending:false}),
-    db.from('order_items').select('name,qty,price,orders!inner(status,created_at)').eq('orders.status','paid').gte('orders.created_at',iso(pf)),
-    db.from('orders').select('id,table_id,total,status,created_at,tables(number)').gte('created_at',iso(pf))]);
+    db.from('invoices').select().gte('created_at',iso(pf)).order('created_at',{ascending:false}).limit(10000),
+    db.from('order_items').select('name,qty,price,orders!inner(status,created_at)').eq('orders.status','paid').gte('orders.created_at',iso(pf)).limit(10000),
+    db.from('orders').select('id,table_id,total,status,created_at,tables(number)').gte('created_at',iso(pf)).limit(10000)]);
   const all=a.data||[],inv=all.filter(i=>inR(i.created_at,f,e)),pinv=all.filter(i=>inR(i.created_at,pf,f)),its=b.data||[],
     cur=its.filter(i=>inR(i.orders.created_at,f,e)),prv=its.filter(i=>inR(i.orders.created_at,pf,f)),
     sum=(x,k='total')=>x.reduce((s,i)=>s+Number(i[k]),0),qty=x=>x.reduce((s,i)=>s+i.qty,0);

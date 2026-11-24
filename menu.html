@@ -457,7 +457,7 @@ function copyWifiPass(){
   }
 }
 
-function darken(hex, pct){
+const darken = window.darken || function(hex, pct){
   try {
     let c = String(hex||'').replace('#','');
     if(c.length === 3) c = c.split('').map(x=>x+x).join('');
@@ -467,7 +467,7 @@ function darken(hex, pct){
     let b = Math.max(0, (num & 0x0000FF) - Math.round(255 * (pct/100)));
     return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   } catch(e){ return hex; }
-}
+};
 function applyTheme(hex){
   if(!hex) hex = '#15803d';
   document.documentElement.style.setProperty('--brand', hex);
@@ -477,10 +477,12 @@ function applyTheme(hex){
 
 let R={};
 const $=id=>document.getElementById(id),
-  tk=n=>(R.currency||'৳')+Number(n||0).toLocaleString('en-IN'),
-  esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const tid=new URLSearchParams(location.search).get('t');
-const CART_KEY = 'menu_cart_' + (tid || 'default');
+  tk=window.tk||(n=>(R.currency||'৳')+Number(n||0).toLocaleString('en-IN')),
+  esc=window.esc||(s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+const urlParams = new URLSearchParams(location.search);
+let tid = urlParams.get('t');
+const tableParam = urlParams.get('table');
+let CART_KEY = 'menu_cart_' + (tid || tableParam || 'default');
 let items=[],cats=[],cart={},cartMeta={},cur='All',tableNo='',appliedCoupon=null;
 
 let curLang = localStorage.getItem('qrmenu_lang') || 'en';
@@ -628,6 +630,13 @@ function callWaiter(customMsg){
     localStorage.setItem('qrmenu_waiter_calls', JSON.stringify(calls.slice(0, 20)));
     if(menuBc) menuBc.postMessage({ t: 'waiter_call', table: tbl, req: reqText, id: callObj.id, time: now });
   } catch(e){}
+  db.from('waiter_calls').insert({
+    id: callObj.id,
+    table_id: tid || null,
+    table_no: tbl,
+    request: reqText,
+    status: 'pending'
+  }).then(()=>{}).catch(()=>{});
   updateWaiterBtnState(true);
   showToast(curLang === 'bn' ? `টেবিল ${tbl}-এ ওয়েটার ডাকা হয়েছে!` : `Waiter called for Table ${tbl}!`);
 }
@@ -664,6 +673,14 @@ async function checkActiveOrder(){
     if(!o || o.status === 'cancelled'){
       clearTracker();
       return;
+    }
+    // Auto-clear tracker if order is paid and more than 30 minutes old
+    if(o.status === 'paid' && o.created_at){
+      const ageMs = Date.now() - new Date(o.created_at).getTime();
+      if(ageMs > 30 * 60 * 1000){
+        clearTracker();
+        return;
+      }
     }
     activeOrderData = o;
     updateTrackerUI();
@@ -843,16 +860,23 @@ function loadCartState(){
     const data = JSON.parse(raw);
     if(data && typeof data.cart === 'object'){
       cart = {};
-      cartMeta = data.cartMeta || {};
-      for(const k of Object.keys(cartMeta)){
-        if(cartMeta[k] && cartMeta[k].name){
-          cartMeta[k].name = cleanName(cartMeta[k].name);
-        }
-      }
+      cartMeta = {};
       for(const [k, v] of Object.entries(data.cart)){
         const baseId = String(k).split('__')[0];
-        if(items.some(i => i.id == baseId) && v > 0){
+        const item = items.find(i => i.id == baseId);
+        if(item && v > 0){
           cart[k] = v;
+          if(k.includes('__v')){
+            const vIdx = +k.split('__v')[1];
+            const vObj = item.variants?.[vIdx];
+            cartMeta[k] = { id: item.id, name: `${cleanName(item.name)} (${cleanName(vObj?.name || 'Size')})`, price: vObj ? +vObj.price : pr(item) };
+          } else if(k.includes('__addon_')){
+            const aIdx = +k.split('__addon_')[1];
+            const aObj = item.addons?.[aIdx];
+            cartMeta[k] = { id: item.id, name: cleanName(aObj?.name || 'Extra'), price: aObj ? +aObj.price : 0 };
+          } else {
+            cartMeta[k] = { id: item.id, name: cleanName(item.name), price: pr(item) };
+          }
         }
       }
       appliedCoupon = data.appliedCoupon || null;
@@ -873,10 +897,11 @@ function clearCartState(){
 function msg(t,sub){$('list').innerHTML=`<div class="text-center py-16"><p class="font-bold text-lg">${t}</p><p class="text-slate-500 text-sm mt-1">${sub||''}</p></div>`;$('cats').innerHTML=''}
 
 async function init(){
-  if(!tid) return msg('Scan the QR code on your table','This page needs a table code.');
+  if(!tid && !tableParam) return msg('Scan the QR code on your table','This page needs a table code.');
+  const tblQ = tid ? db.from('tables').select().eq('id', tid) : db.from('tables').select().eq('number', String(tableParam));
   const [r,t,m]=await Promise.all([
     db.from('restaurant').select().eq('id',1).single(),
-    db.from('tables').select().eq('id',tid).single(),
+    tblQ.single(),
     db.from('menu_items').select().eq('available',true).order('category').order('name')
   ]);
   if(t.error||!t.data) return msg('Table not found','Scan the QR code on your table again.');
@@ -887,6 +912,8 @@ async function init(){
   document.title = (R.name || 'Restaurant') + ' menu';
   $('rn').textContent = R.name || 'Restaurant';
   tableNo = t.data.number;
+  tid = t.data.id;
+  CART_KEY = 'menu_cart_' + tid;
   updateWaiterBtnState(hasActiveWaiterCall(tableNo));
 
   if(R.wifi_name || R.wifi_qr){
@@ -910,6 +937,19 @@ async function init(){
   try {
     db.channel('cust_order_channel').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async () => {
       await checkActiveOrder();
+    }).subscribe();
+  } catch(e){}
+
+  try {
+    db.channel('cust_waiter_channel').on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls' }, p => {
+      if (p.new && String(p.new.table_no) === String(tableNo)) {
+        if (p.new.status === 'resolved') {
+          updateWaiterBtnState(false);
+          showToast(curLang === 'bn' ? 'ওয়েটার কল সম্পন্ন হয়েছে।' : 'Waiter request resolved.');
+        } else if (p.new.status === 'pending') {
+          updateWaiterBtnState(true);
+        }
+      }
     }).subscribe();
   } catch(e){}
 
@@ -956,10 +996,18 @@ function getItemName(key){
 }
 
 function getItemPrice(key){
-  if(cartMeta[key] && cartMeta[key].price != null) return +cartMeta[key].price;
   const baseId = String(key).split('__')[0];
   const item = items.find(x => x.id == baseId);
-  return item ? pr(item) : 0;
+  if(!item) return cartMeta[key]?.price ? +cartMeta[key].price : 0;
+  if(key.includes('__v')){
+    const vIdx = +key.split('__v')[1];
+    return item.variants?.[vIdx] ? +item.variants[vIdx].price : pr(item);
+  }
+  if(key.includes('__addon_')){
+    const aIdx = +key.split('__addon_')[1];
+    return item.addons?.[aIdx] ? +item.addons[aIdx].price : 0;
+  }
+  return pr(item);
 }
 
 let currentCustomizerItem = null;
@@ -1505,7 +1553,8 @@ async function place(){
   const id=crypto.randomUUID(),
     sub = subtotal(), disc = discount(), tot = total(),
     cpCode = appliedCoupon ? appliedCoupon.code : null,
-    lines=Object.entries(cart).map(([k,n])=>({order_id:id,name:getItemName(k),price:getItemPrice(k),qty:n}));
+    lines=Object.entries(cart).map(([k,n])=>({order_id:id,name:getItemName(k),price:Math.max(0, getItemPrice(k)),qty:Math.max(1, Math.floor(n))}));
+  if(tot < 0 || sub <= 0 || !lines.length) return alert('Invalid order total.');
   $('pb').disabled=true; $('pb').textContent=curLang==='bn'?'অর্ডার পাঠানো হচ্ছে...':'Sending...';
   let e=(await db.from('orders').insert({id,table_id:tid,total:tot,discount:disc,coupon:cpCode,note:$('note').value.trim()||null})).error;
   if(!e) e=(await db.from('order_items').insert(lines)).error;

@@ -479,20 +479,19 @@ button.bg-brand:hover, a.bg-brand:hover { background-color: var(--brand-hover, #
 <script>
 let R = {}, items = [], cats = ['All'], curCat = 'All';
 const $ = id => document.getElementById(id),
-  esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
-  tk = n => (R.currency || '৳') + Number(n || 0).toLocaleString('en-IN');
-
-function darken(hex, pct){
-  try {
-    let c = String(hex||'').replace('#','');
-    if(c.length === 3) c = c.split('').map(x=>x+x).join('');
-    const num = parseInt(c, 16);
-    let r = Math.max(0, (num >> 16) - Math.round(255 * (pct/100)));
-    let g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(255 * (pct/100)));
-    let b = Math.max(0, (num & 0x0000FF) - Math.round(255 * (pct/100)));
-    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-  } catch(e){ return hex; }
-}
+  esc = window.esc || (s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))),
+  tk = window.tk || (n => (R.currency || '৳') + Number(n || 0).toLocaleString('en-IN')),
+  darken = window.darken || function(hex, pct){
+    try {
+      let c = String(hex||'').replace('#','');
+      if(c.length === 3) c = c.split('').map(x=>x+x).join('');
+      const num = parseInt(c, 16);
+      let r = Math.max(0, (num >> 16) - Math.round(255 * (pct/100)));
+      let g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(255 * (pct/100)));
+      let b = Math.max(0, (num & 0x0000FF) - Math.round(255 * (pct/100)));
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    } catch(e){ return hex; }
+  };
 
 function applyTheme(hex){
   if(!hex) hex = '#15803d';

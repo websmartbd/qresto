@@ -213,6 +213,11 @@
               <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
               Download Backup (JSON)
             </button>
+            <input type="file" id="import_backup_file" accept=".json,application/json" class="hidden" onchange="importBackup(event)">
+            <button type="button" onclick="$('import_backup_file').click()" class="btn2 sm !py-2 flex items-center gap-1.5 font-semibold">
+              <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+              Import Backup (JSON)
+            </button>
             ${DEMO ? `
               <button type="button" onclick="confirmReset()" class="btn2 sm !py-2 text-red-600 border-red-200 hover:bg-red-50 font-semibold">
                 Reset Demo Data
@@ -302,6 +307,90 @@
       a.href = URL.createObjectURL(blob);
       a.download = `restaurant-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
+    }
+
+    async function importBackup(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = '';
+
+      try {
+        const text = await file.text();
+        const backup = JSON.parse(text);
+        if (!backup || typeof backup !== 'object') throw new Error('Invalid JSON format');
+        if (!backup.tables && !backup.menu_items && !backup.restaurant) {
+          throw new Error('Unrecognized backup format. Missing tables, menu items or restaurant data.');
+        }
+
+        const counts = [
+          backup.menu_items ? `${backup.menu_items.length} items` : null,
+          backup.tables ? `${backup.tables.length} tables` : null,
+          backup.orders ? `${backup.orders.length} orders` : null,
+          backup.invoices ? `${backup.invoices.length} invoices` : null,
+          backup.coupons ? `${backup.coupons.length} coupons` : null
+        ].filter(Boolean).join(', ');
+
+        const ok = await confirmDialog({
+          title: 'Restore Backup Data?',
+          message: `This will overwrite current restaurant data with backup from "${esc(file.name)}"${counts ? ' (' + counts + ')' : ''}. Are you sure you want to proceed?`,
+          confirmText: 'Restore Backup',
+          danger: true
+        });
+        if (!ok) return;
+
+        if (DEMO) {
+          const K = 'qrmenu_demo_v2';
+          const d = JSON.parse(localStorage.getItem(K) || '{}');
+          if (backup.restaurant) d.restaurant = Array.isArray(backup.restaurant) ? backup.restaurant : [backup.restaurant];
+          if (backup.tables) d.tables = backup.tables;
+          if (backup.menu_items) d.menu_items = backup.menu_items;
+          if (backup.coupons) d.coupons = backup.coupons;
+          if (backup.invoices) d.invoices = backup.invoices;
+          if (backup.waiter_calls) d.waiter_calls = backup.waiter_calls;
+          if (backup.orders) {
+            const ords = [];
+            const items = [];
+            backup.orders.forEach(o => {
+              const copy = { ...o };
+              if (Array.isArray(copy.order_items)) {
+                items.push(...copy.order_items);
+                delete copy.order_items;
+              }
+              ords.push(copy);
+            });
+            d.orders = ords;
+            if (items.length) d.order_items = items;
+            else if (backup.order_items) d.order_items = backup.order_items;
+          }
+          localStorage.setItem(K, JSON.stringify(d));
+          toast('Backup restored successfully!');
+          setTimeout(() => location.reload(), 600);
+        } else {
+          if (backup.restaurant) await db.from('restaurant').upsert(backup.restaurant);
+          if (backup.tables) await db.from('tables').upsert(backup.tables);
+          if (backup.menu_items) await db.from('menu_items').upsert(backup.menu_items);
+          if (backup.coupons) await db.from('coupons').upsert(backup.coupons);
+          if (backup.invoices) await db.from('invoices').upsert(backup.invoices);
+          if (backup.orders) {
+            const ords = [];
+            const items = [];
+            backup.orders.forEach(o => {
+              const copy = { ...o };
+              if (Array.isArray(copy.order_items)) {
+                items.push(...copy.order_items);
+                delete copy.order_items;
+              }
+              ords.push(copy);
+            });
+            await db.from('orders').upsert(ords);
+            if (items.length) await db.from('order_items').upsert(items);
+          }
+          toast('Backup restored successfully!');
+          setTimeout(() => location.reload(), 600);
+        }
+      } catch (err) {
+        alert('Failed to import backup: ' + (err.message || 'Unknown error'));
+      }
     }
     init({ page: 'settings', title: 'Settings', view: vSettings });
   </script>

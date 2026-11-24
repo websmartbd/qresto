@@ -24,6 +24,6 @@ Built with lightweight vanilla JS, Tailwind CSS, and Supabase (with built-in off
 ---
 
 ## 🚀 Live Demo
-- **Customer Showcase:** [https://qresto.asf.run//](https://qresto.asf.run/)
+- **Customer Showcase:** [https://qresto.asf.run/](https://qresto.asf.run/)
 - **Table QR Menu:** [https://qresto.asf.run/menu.html?t=1](https://qresto.asf.run/menu.html?t=1)
 - **Admin Dashboard:** [https://qresto.asf.run/admin/](https://qresto.asf.run/admin/)

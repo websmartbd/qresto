@@ -58,7 +58,7 @@ async function vDash(){
         <p class="font-semibold text-sm shrink-0">${tk(o.total)}</p>
         <div class="hidden 2xl:block">${pill(o.status)}</div>
         <div class="flex items-center gap-2 md:justify-end shrink-0">
-          ${n[0]?`<button onclick="setSt('${o.id}','${n[0]}')" class="btn2 !py-1 !px-2.5 sm:!py-1.5 sm:!px-3 text-xs sm:text-[13px]">${n[1]}</button><button onclick="cancelO('${o.id}')" class="text-xs sm:text-sm font-semibold text-red-600 px-1 py-1">Cancel</button>`:`<button onclick="bill('${o.table_id}')" class="btn !py-1 !px-2.5 sm:!py-1.5 sm:!px-3 text-xs sm:text-[13px]">Cash received</button>`}
+          ${n[0]?`<button onclick="setSt('${o.id}','${n[0]}')" class="btn2 !py-1 !px-2.5 sm:!py-1.5 sm:!px-3 text-xs sm:text-[13px]">${n[1]}</button><button onclick="cancelO('${o.id}')" class="text-xs sm:text-sm font-semibold text-red-600 px-1 py-1">Cancel</button>`:(G[o.table_id]?.every(x=>x.status==='served')?`<button onclick="bill('${o.table_id}')" class="btn !py-1 !px-2.5 sm:!py-1.5 sm:!px-3 text-xs sm:text-[13px]">Cash received</button>`:`<button onclick="go('orders')" class="btn2 !py-1 !px-2 sm:!py-1.5 sm:!px-2.5 text-xs text-amber-700 bg-amber-50 border-amber-200" title="Other orders for this table are still being prepared in the kitchen">Cooking ↗</button>`)}
         </div>
       </div>
     </div>`;

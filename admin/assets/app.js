@@ -1,8 +1,8 @@
 // Shared by every admin page: helpers, sidebar, login check, modal, toast
 const $=id=>document.getElementById(id),
-  tk=n=>(window.R?.currency||'৳')+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2}),
+  tk=(typeof window!=='undefined'&&window.tk)||(n=>((typeof window!=='undefined'&&window.R?.currency)||'৳')+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})),
   sh=n=>n>=1000?+(n/1000).toFixed(1)+'k':n,
-  esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+  esc=(typeof window!=='undefined'&&window.esc)||(s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))),
   tm=d=>new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
   dt=d=>new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}),
   merge=a=>Object.values(a.reduce((m,i)=>{const k=i.name+'|'+i.price;(m[k]=m[k]||{name:i.name,price:i.price,qty:0}).qty+=i.qty;return m},{})),
@@ -27,7 +27,7 @@ const IC={
 };
 
 const sd=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x},ad=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x},
-  iso=d=>d.toISOString(),inR=(x,a,b)=>x>=iso(a)&&x<iso(b),
+  iso=d=>d.toISOString(),inR=(x,a,b)=>{const t=new Date(x).getTime();return t>=new Date(a).getTime()&&t<new Date(b).getTime()},
   ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),
   pd=s=>{const [a,b,c]=s.split('-');return new Date(+a,b-1,+c)},
   fd=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'}),
@@ -46,7 +46,7 @@ const sd=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x},ad=(d,n)=>{const 
   BAR={new:'border-l-amber-500',preparing:'border-l-sky-500',served:'border-l-emerald-600',paid:'border-l-stone-500',cancelled:'border-l-red-500'},
   pill=s=>`<span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-md ${BADGE[s]||'bg-stone-100 text-stone-700 border border-stone-200'}"><span class="w-1.5 h-1.5 rounded-full ${DOT[s]||'bg-stone-400'} shrink-0"></span><span>${LBL[s]||s}</span></span>`;
 
-let soundEnabled = localStorage.getItem('qrmenu_admin_sound') !== '0';
+let soundEnabled = typeof localStorage !== 'undefined' ? localStorage.getItem('qrmenu_admin_sound') !== '0' : true;
 
 // Gentle sine notification chime (calmed gain from 0.25 to 0.07)
 function beep(type = 'order'){
@@ -261,7 +261,7 @@ const P=[['dash','Dashboard','dashboard.html'],['orders','Orders','orders.html']
 const go=k=>{location.href=P.find(x=>x[0]===k)[2]};
 const logout=()=>db.auth.signOut().then(()=>location.href='login.html');
 
-function darken(hex, pct){
+const darken = (typeof window !== 'undefined' && window.darken) || function(hex, pct){
   try {
     let c = String(hex||'').replace('#','');
     if(c.length === 3) c = c.split('').map(x=>x+x).join('');
@@ -271,7 +271,7 @@ function darken(hex, pct){
     let b = Math.max(0, (num & 0x0000FF) - Math.round(255 * (pct/100)));
     return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   } catch(e){ return hex; }
-}
+};
 function applyTheme(hex){
   if(!hex) hex = '#15803d';
   document.documentElement.style.setProperty('--brand', hex);
@@ -372,4 +372,8 @@ async function init(o){
     db.channel('o').on('postgres_changes',{event:'*',schema:'public',table:'orders'},p=>{badge();if(o.live)REFRESH();if(p.eventType==='INSERT')beep()}).subscribe();
     await o.view();
   }catch(e){$('main').innerHTML=`<div class="box p-4 text-sm"><b class="text-red-600 font-semibold">Could not load data</b><p class="mt-1 text-stone-500">${esc(e.message||e)}</p></div>`}
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { merge, inR, tk, esc, darken, pr, sd, ad, iso, ymd, pd, fd, fh };
 }

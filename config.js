@@ -10,17 +10,23 @@ const db = DEMO ? demoDB() : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ---- Demo database: same calls as Supabase, data kept in localStorage ---- */
 function demoDB() {
-  const K = 'qrmenu_demo_v2', A = 'qrmenu_demo_auth', bc = new BroadcastChannel(K), subs = [];
+  const K = 'qrmenu_demo_v2', A = 'qrmenu_demo_auth', subs = [];
+  let bc = null;
+  try {
+    bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(K) : null;
+    if (bc && typeof bc.unref === 'function') bc.unref();
+  } catch (e) {}
   const REL = {
     orders: { tables: { one: 'table_id', t: 'tables' }, order_items: { many: 'order_id', t: 'order_items' } },
     order_items: { orders: { one: 'order_id', t: 'orders' } }
   };
   const save = d => localStorage.setItem(K, JSON.stringify(d));
   const clone = x => x == null ? null : JSON.parse(JSON.stringify(x));
-  const TABLES = ['restaurant', 'tables', 'menu_items', 'invoices', 'orders', 'order_items', 'coupons'];
+  const TABLES = ['restaurant', 'tables', 'menu_items', 'invoices', 'orders', 'order_items', 'coupons', 'waiter_calls'];
   const seed = () => {
     if (typeof DEMO_DATA === 'undefined') throw new Error('demo-data.js not found. Keep it in the same folder as admin.html and menu.html.');
     const d = clone(DEMO_DATA), now = new Date();
+    d.waiter_calls = d.waiter_calls || [];
     ['orders', 'invoices'].forEach(t => d[t].forEach(r => {
       const x = new Date(now); x.setDate(x.getDate() - r._ago); x.setHours(r._h, Math.floor(Math.random() * 60), 0, 0);
       r.created_at = x.toISOString(); delete r._ago; delete r._h;
@@ -31,7 +37,9 @@ function demoDB() {
   const load = () => {
     try {
       const d = JSON.parse(localStorage.getItem(K));
-      if (d && TABLES.every(k => Array.isArray(d[k]))) {
+      if (d) {
+        if (!Array.isArray(d.waiter_calls)) { d.waiter_calls = []; save(d); }
+        if (TABLES.every(k => Array.isArray(d[k]))) {
         if (typeof DEMO_DATA !== 'undefined' && DEMO_DATA.menu_items) {
           let updated = false;
           d.menu_items.forEach(item => {
@@ -53,6 +61,7 @@ function demoDB() {
           if (updated) save(d);
         }
         return d;
+        }
       }
     } catch (e) {}
     return seed();
@@ -62,11 +71,12 @@ function demoDB() {
   const mk = (D, t, v) => {
     const r = { ...v };
     if (t === 'orders') { r.id ??= crypto.randomUUID(); r.no = maxId(D.orders, 'no'); r.status ??= 'new'; r.invoice_id ??= null; r.note ??= null; }
+    else if (t === 'waiter_calls') { r.id ??= crypto.randomUUID(); r.status ??= 'pending'; r.created_at ??= new Date().toISOString(); }
     else r.id = maxId(D[t]);
     if (t === 'menu_items') { r.available ??= true; r.category ??= 'Others'; }
     if (t === 'coupons') { r.active ??= true; r.min_order ??= 0; }
-    if (t === 'invoices') { r.discount ??= 0; r.tax ??= 0; }
-    if (t === 'orders' || t === 'invoices') r.created_at ??= new Date().toISOString();
+    if (t === 'invoices') { r.discount ??= 0; r.tax ??= 0; r.service_charge ??= 0; }
+    if (t === 'orders' || t === 'invoices' || t === 'waiter_calls') r.created_at ??= new Date().toISOString();
     return r;
   };
 
@@ -82,6 +92,7 @@ function demoDB() {
     in(c, a) { this.F.push(r => a.includes(get(r, c))); return this; }
     gte(c, v) { this.F.push(r => get(r, c) >= v); return this; }
     order(c, o = {}) { this.O.push([c, o.ascending === false ? -1 : 1]); return this; }
+    limit(n) { this.lim = n; return this; }
     single() { this.one = true; return this; }
     then(a, b) { return this.run().then(a, b); }
 
@@ -115,16 +126,19 @@ function demoDB() {
         }
         rows = rows.filter(ok);
         rows.sort((a, b) => { for (const [c, d] of this.O) { const x = get(a, c), y = get(b, c); if (x !== y) return (x > y ? 1 : -1) * d; } return 0; });
+        if (this.lim) rows = rows.slice(0, this.lim);
         out = rows;
       }
       if (err) return { data: null, error: err };
-      if (ev) bc.postMessage({ t, ev });
+      if (ev && bc) { try { bc.postMessage({ t, ev }); } catch (e) {} }
       if (out && this.one) { out = clone(out[0]); if (!out) return { data: null, error: { message: 'Not found' } }; }
       return { data: out, error: null };
     }
   }
 
-  bc.onmessage = e => subs.filter(s => s[0] === e.data.t).forEach(s => s[1]({ eventType: e.data.ev }));
+  if (bc) {
+    bc.onmessage = e => subs.filter(s => s[0] === e.data.t).forEach(s => s[1]({ eventType: e.data.ev }));
+  }
   return {
     from: t => new Q(t),
     channel: () => { const ch = { on(_, o, cb) { subs.push([o.table, cb]); return ch; }, subscribe() { return ch; } }; return ch; },
@@ -137,3 +151,43 @@ function demoDB() {
     reset: () => { localStorage.removeItem(K); location.reload(); }
   };
 }
+
+// ============================================================
+// Shared Utilities (Used across index.html, menu.html, admin pages)
+// ============================================================
+(function () {
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const darken = (hex, pct) => {
+    try {
+      let c = String(hex || '').replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      let r = Math.max(0, (num >> 16) - Math.round(255 * (pct / 100)));
+      let g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(255 * (pct / 100)));
+      let b = Math.max(0, (num & 0x0000FF) - Math.round(255 * (pct / 100)));
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    } catch (e) { return hex; }
+  };
+
+  const tk = n => {
+    const cur = (typeof window !== 'undefined' && window.R?.currency) || '৳';
+    return cur + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  };
+
+  const calcDisc = (c, sub) => {
+    if (!c || sub < (c.min_order || 0)) return 0;
+    return c.type === 'percent' ? Math.round(sub * c.value / 100) : Math.min(c.value, sub);
+  };
+
+  if (typeof window !== 'undefined') {
+    window.esc = esc;
+    window.darken = darken;
+    window.tk = tk;
+    window.calcDisc = calcDisc;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { esc, darken, tk, calcDisc };
+  }
+})();
+
